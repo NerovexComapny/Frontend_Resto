@@ -53,12 +53,14 @@ const App = () => {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Navigate to="/login" replace />} />
+          {/* Public client menu route (QR users without auth) */}
+          <Route path="/menu" element={<MenuPage />} />
+          <Route path="/menu/*" element={<MenuPage />} />
           <Route 
             path="/login" 
             element={token && user ? <Navigate to={getRoleRedirect(user.role)} replace /> : <LoginPage />} 
           />
           <Route path="/register" element={<Navigate to="/login" replace />} />
-          <Route path="/menu" element={<MenuPage />} />
 
           {/* Manager Protected Routes */}
           <Route path="/manager/dashboard" element={<ProtectedRoute allowedRoles={['manager']}><DashboardPage /></ProtectedRoute>} />
