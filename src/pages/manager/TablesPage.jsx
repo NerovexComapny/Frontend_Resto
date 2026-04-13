@@ -218,7 +218,7 @@ const TablesPage = () => {
 
     setIsRegeneratingQrs(true);
     try {
-      await api.put(getRegenerateQRsEndpoint());
+      await api.post(getRegenerateQRsEndpoint());
       const response = await api.get(getTablesEndpoint());
       const apiTables = Array.isArray(response?.data?.tables) ? response.data.tables : [];
       setTables(apiTables);
