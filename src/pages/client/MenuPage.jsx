@@ -16,7 +16,6 @@ import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api, { publicApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
-import { connectSocket } from '../../services/socket';
 import backgroundImg from '../../assets/background.png';
 import logo from '../../assets/logo.webp';
 import LanguageSwitcher from '../../components/shared/LanguageSwitcher';
@@ -284,43 +283,41 @@ const MenuPage = () => {
   };
 
   useEffect(() => {
-    if (!tableId || !orderPlaced) return;
+    if (!orderPlaced || !trackedOrderId) return;
 
-    const socket = connectSocket();
-    socket.emit('joinTable', tableId);
+    let isMounted = true;
 
-    const handleOrderRealtimeUpdate = (payload) => {
-      const order = payload?.order;
-      if (!order) return;
+    const pollOrderStatus = async () => {
+      try {
+        const response = await publicApi.get(`${ordersEndpoint}/${trackedOrderId}`, {
+          suppressGlobalErrorToast: true
+        });
+        const order = response?.data?.order;
+        
+        if (order && isMounted) {
+          const nextStatus = toClientOrderStatus(order?.status);
+          const details = Array.isArray(order?.items)
+            ? order.items
+                .map((item) => `${Number(item?.quantity || 1)}x ${item?.name || item?.menuItem?.name?.fr || 'Item'}`)
+                .join(', ')
+            : trackedOrderDetails;
 
-      const incomingTableId = toId(order?.table);
-      if (incomingTableId !== tableId) return;
-
-      const incomingOrderId = toId(order?._id || order?.id);
-      if (trackedOrderId && incomingOrderId !== trackedOrderId) return;
-
-      const nextStatus = toClientOrderStatus(order?.status);
-      const details = Array.isArray(order?.items)
-        ? order.items
-            .map((item) => `${Number(item?.quantity || 1)}x ${item?.name || item?.menuItem?.name?.fr || 'Item'}`)
-            .join(', ')
-        : trackedOrderDetails;
-
-      setTrackedOrderId(incomingOrderId || trackedOrderId);
-      setTrackedOrderStatus(nextStatus);
-      setTrackedOrderDetails(details || '');
+          setTrackedOrderStatus(nextStatus);
+          setTrackedOrderDetails(details || '');
+        }
+      } catch (error) {
+        // Silently fail, it will retry on next poll
+      }
     };
 
-    socket.on('order_updated', handleOrderRealtimeUpdate);
-    socket.on('order_ready', handleOrderRealtimeUpdate);
-    socket.on('orderStatusUpdated', handleOrderRealtimeUpdate);
+    pollOrderStatus(); // initial fetch immediately
+    const intervalId = setInterval(pollOrderStatus, 5000);
 
     return () => {
-      socket.off('order_updated', handleOrderRealtimeUpdate);
-      socket.off('order_ready', handleOrderRealtimeUpdate);
-      socket.off('orderStatusUpdated', handleOrderRealtimeUpdate);
+      isMounted = false;
+      clearInterval(intervalId);
     };
-  }, [orderPlaced, tableId, trackedOrderDetails, trackedOrderId]);
+  }, [orderPlaced, trackedOrderId, ordersEndpoint, trackedOrderDetails]);
 
   useEffect(() => {
     if (!orderPlaced) {
