@@ -1,0 +1,349 @@
+﻿import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import Users from 'lucide-react/dist/esm/icons/users';
+import QrCode from 'lucide-react/dist/esm/icons/qr-code';
+import Edit2 from 'lucide-react/dist/esm/icons/edit-2';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import X from 'lucide-react/dist/esm/icons/x';
+import Download from 'lucide-react/dist/esm/icons/download';
+import Printer from 'lucide-react/dist/esm/icons/printer';
+import ManagerLayout from '../../layouts/ManagerLayout';
+import api from '../../services/api';
+import { toast } from 'react-hot-toast';
+import useAuthStore from '../../store/authStore';
+
+const getStatusStyle = (status) => {
+  switch (status) {
+    case 'available': return { dot: 'bg-emerald-500', text: 'text-emerald-500', bg: 'bg-[#0d1f3c] hover:bg-[#132845]', border: 'border-[#1e3a5f] border-emerald-500/20' };
+    case 'occupied': return { dot: 'bg-red-500', text: 'text-red-500', bg: 'bg-red-500/5 hover:bg-red-500/10', border: 'border-red-500/30' };
+    case 'reserved': return { dot: 'bg-[#7c6af7]', text: 'text-[#7c6af7]', bg: 'bg-[#7c6af7]/5 hover:bg-[#7c6af7]/10', border: 'border-[#7c6af7]/30' };
+    default: return { dot: 'bg-slate-500', text: 'text-slate-500', bg: 'bg-[#0d1f3c]', border: 'border-[#1e3a5f]' };
+  }
+};
+
+const getTablesEndpoint = () => {
+  const baseURL = String(api.defaults.baseURL || '');
+  return /\/api\/?$/.test(baseURL) ? '/tables' : '/api/tables';
+};
+
+const TablesPage = () => {
+  const [tables, setTables] = useState([]);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedQrTable, setSelectedQrTable] = useState(null);
+  const [newTable, setNewTable] = useState({ number: '', capacity: '4' });
+  const user = useAuthStore((state) => state.user);
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+  };
+  
+  const cardVariants = {
+    hidden: { opacity: 0, scale: 0.95 },
+    visible: { opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 100 } }
+  };
+
+  const modalVariants = {
+    hidden: { opacity: 0, scale: 0.95, y: 20 },
+    visible: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } },
+    exit: { opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.2 } }
+  };
+
+  useEffect(() => {
+    let isActive = true;
+
+    const fetchTables = async () => {
+      try {
+        const response = await api.get(getTablesEndpoint());
+        if (!isActive) return;
+
+        const apiTables = Array.isArray(response?.data?.tables) ? response.data.tables : [];
+        setTables(apiTables);
+      } catch (error) {
+        if (isActive) {
+          toast.error(error.response?.data?.message || error.message);
+        }
+      }
+    };
+
+    fetchTables();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const handleCreateTable = async (event) => {
+    event.preventDefault();
+
+    if (!user?.restaurant) {
+      toast.error('Missing restaurant context');
+      return;
+    }
+
+    try {
+      const payload = {
+        number: Number(newTable.number),
+        capacity: Number(newTable.capacity) || 4,
+        restaurant: user.restaurant,
+      };
+
+      const response = await api.post(getTablesEndpoint(), payload);
+      const createdTable = response?.data?.table;
+
+      if (createdTable) {
+        setTables((previousTables) => [createdTable, ...previousTables]);
+      }
+
+      setIsAddModalOpen(false);
+      setNewTable({ number: '', capacity: '4' });
+      toast.success('Table created successfully');
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message);
+    }
+  };
+
+  const handleDeleteTable = async (tableId) => {
+    try {
+      await api.delete(`${getTablesEndpoint()}/${tableId}`);
+      setTables((previousTables) => previousTables.filter((table) => table._id !== tableId));
+      toast.success('Table deleted successfully');
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message);
+    }
+  };
+
+  const handleDownloadQR = (table) => {
+    if (!table?.qrCode) return;
+    const link = document.createElement('a');
+    link.href = table.qrCode;
+    link.download = `table-${table.number}-qr.png`;
+    link.click();
+  };
+
+  return (
+    <ManagerLayout>
+      <div className="space-y-6">
+        
+        {/* Header Options */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Floor Plan
+            </h2>
+            <p className="text-slate-400 mt-1 capitalize text-sm">
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1 translate-y-px"></span> Available
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 ml-4 mr-1 translate-y-px"></span> Occupied
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#7c6af7] ml-4 mr-1 translate-y-px"></span> Reserved
+            </p>
+          </div>
+          
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center justify-center space-x-2 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] px-4 py-2.5 rounded-xl font-semibold transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Add Table</span>
+          </button>
+        </div>
+
+        {/* Floor Plan Grid */}
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
+        >
+          <AnimatePresence>
+            {tables.map((table) => {
+              const styles = getStatusStyle(table.status);
+              
+              return (
+                <motion.div
+                  layout
+                  key={table._id}
+                  variants={cardVariants}
+                  className={`${styles.bg} border ${styles.border} rounded-2xl p-6 relative group transition-colors shadow-sm flex flex-col items-center justify-center aspect-[4/5]`}
+                >
+                  {/* Actions (Hover) */}
+                  <div className="absolute top-3 right-3 flex space-x-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button className="p-2 bg-[#132845]/80 backdrop-blur-md border border-[#1e3a5f] text-slate-300 hover:text-[#7c6af7] rounded-xl transition-colors">
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTable(table._id)}
+                      className="p-2 bg-[#132845]/80 backdrop-blur-md border border-[#1e3a5f] text-slate-300 hover:text-red-500 rounded-xl transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* QR Code Quick Button */}
+                  <div className="absolute top-3 left-3">
+                    <button 
+                      onClick={() => setSelectedQrTable(table)}
+                      className="p-2 bg-[#132845]/80 backdrop-blur-md border border-[#1e3a5f] text-slate-300 hover:text-[#7c6af7] rounded-xl transition-colors group/qr"
+                      title="View QR Code"
+                    >
+                      <QrCode className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Number */}
+                  <h3 
+                    className="text-6xl font-bold text-slate-100 mt-4 mb-2 drop-shadow-md" 
+                    style={{ fontFamily: "'Playfair Display', serif" }}
+                  >
+                    {table.number}
+                  </h3>
+                  
+                  {/* Capacity */}
+                  <div className="flex items-center space-x-1.5 text-slate-400 mb-6 bg-[#132845]/50 px-3 py-1 rounded-lg border border-[#1e3a5f]/50">
+                    <Users className="w-4 h-4" />
+                    <span className="text-sm font-medium">{table.capacity} Seats</span>
+                  </div>
+
+                  {/* Status Indicator */}
+                  <div className="mt-auto border-t border-[#1e3a5f]/50 w-full pt-4 flex items-center justify-center space-x-2">
+                    <div className={`w-2.5 h-2.5 rounded-full ${styles.dot} shadow-[0_0_8px_rgba(0,0,0,0.5)] shadow-${styles.dot.split('-')[1]}-500/50`}></div>
+                    <span className={`text-xs font-bold uppercase tracking-wider ${styles.text}`}>
+                      {table.status}
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* --- MODALS --- */}
+        
+        {/* Add Table Modal */}
+        <AnimatePresence>
+          {isAddModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                onClick={() => setIsAddModalOpen(false)}
+              />
+              <motion.div 
+                variants={modalVariants} initial="hidden" animate="visible" exit="exit"
+                className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-6 w-full max-w-sm relative z-10 shadow-2xl"
+              >
+                <div className="flex justify-between items-center mb-6 border-b border-[#1e3a5f]/50 pb-4">
+                  <h3 className="text-2xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>Add Table</h3>
+                  <button onClick={() => setIsAddModalOpen(false)} className="p-2 text-slate-400 hover:text-[#7c6af7] bg-[#132845] rounded-xl transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form className="space-y-5" onSubmit={handleCreateTable}>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1.5">Table Number</label>
+                    <input 
+                      type="number" 
+                      placeholder="e.g., 5"
+                      value={newTable.number}
+                      onChange={(e) => setNewTable((previous) => ({ ...previous, number: e.target.value }))}
+                      className="w-full px-4 py-3 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-[#7c6af7] focus:ring-1 focus:ring-[#7c6af7] transition-all font-bold text-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1.5">Seat Capacity</label>
+                    <div className="relative">
+                      <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                      <input 
+                        type="number" 
+                        placeholder="e.g., 4"
+                        value={newTable.capacity}
+                        onChange={(e) => setNewTable((previous) => ({ ...previous, capacity: e.target.value }))}
+                        className="w-full pl-12 pr-4 py-3 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-[#7c6af7] focus:ring-1 focus:ring-[#7c6af7] transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1.5">Restaurant ID (Auto)</label>
+                    <input 
+                      type="text" 
+                      value={user?.restaurant || 'REST-847291'}
+                      disabled
+                      className="w-full px-4 py-3 bg-[#0f2040] border border-[#1e3a5f] rounded-xl text-slate-500 cursor-not-allowed opacity-70"
+                    />
+                  </div>
+
+                  <div className="pt-4 flex gap-3">
+                    <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 py-3 px-4 bg-[#132845] hover:bg-[#1e3a5f] text-slate-300 rounded-xl font-medium transition-colors">
+                      Cancel
+                    </button>
+                    <button type="submit" className="flex-1 py-3 px-4 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] rounded-xl font-semibold transition-colors">
+                      Save Table
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* QR Code View Modal */}
+        <AnimatePresence>
+          {selectedQrTable && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                onClick={() => setSelectedQrTable(null)}
+              />
+              <motion.div 
+                variants={modalVariants} initial="hidden" animate="visible" exit="exit"
+                className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl overflow-hidden w-full max-w-sm relative z-10 shadow-2xl flex flex-col"
+              >
+                <div className="flex justify-between items-center p-5 bg-[#132845]/50 border-b border-[#1e3a5f]">
+                  <h3 className="text-lg font-bold text-slate-100 flex items-center space-x-2">
+                    <QrCode className="w-5 h-5 text-[#7c6af7]" />
+                    <span>Table {selectedQrTable.number} Access</span>
+                  </h3>
+                  <button onClick={() => setSelectedQrTable(null)} className="p-1.5 text-slate-400 hover:text-white transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <div className="p-8 flex flex-col items-center justify-center bg-white">
+                  {/* Embedded styled QR code mock from api */}
+                  <img 
+                    src={selectedQrTable.qrCode} 
+                    alt={`QR Code for Table ${selectedQrTable.number}`}
+                    className="w-48 h-48 rounded-lg shadow-sm"
+                  />
+                  <p className="mt-6 text-[#0d1f3c] font-bold text-sm text-center uppercase tracking-widest">
+                    Scan for Menu
+                  </p>
+                </div>
+
+                <div className="p-5 border-t border-[#1e3a5f] bg-[#0f2040] flex gap-3">
+                  <button
+                    onClick={() => handleDownloadQR(selectedQrTable)}
+                    className="flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 bg-[#132845] border border-[#1e3a5f] hover:bg-[#1e3a5f] text-slate-300 rounded-xl font-medium transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Save</span>
+                  </button>
+                  <button className="flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] rounded-xl font-bold transition-colors">
+                    <Printer className="w-4 h-4" />
+                    <span>Print</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+      </div>
+    </ManagerLayout>
+  );
+};
+
+export default TablesPage;
+

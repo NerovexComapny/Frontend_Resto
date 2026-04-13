@@ -1,0 +1,26 @@
+const React = require('react');
+const { Navigate } = require('react-router-dom');
+
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role'); // e.g., 'manager', 'waiter', 'cashier', 'kitchen'
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles && !allowedRoles.includes(role)) {
+    // Check role and redirect to correct dashboard
+    if (role === 'manager') return <Navigate to="/manager/dashboard" replace />;
+    if (role === 'waiter') return <Navigate to="/waiter/orders" replace />;
+    if (role === 'cashier') return <Navigate to="/cashier/payments" replace />;
+    if (role === 'kitchen') return <Navigate to="/kitchen" replace />;
+    
+    // Fallback redirect
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
+
+module.exports = ProtectedRoute;
