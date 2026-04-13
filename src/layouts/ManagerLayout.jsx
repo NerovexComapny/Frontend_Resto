@@ -10,22 +10,25 @@ import LogOut from 'lucide-react/dist/esm/icons/log-out';
 import Menu from 'lucide-react/dist/esm/icons/menu';
 import X from 'lucide-react/dist/esm/icons/x';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import useAuthStore from '../store/authStore';
 import logo from '../assets/logo.webp';
+import LanguageSwitcher from '../components/shared/LanguageSwitcher';
 
 const ManagerLayout = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const { t } = useTranslation();
 
   const navLinks = [
-    { name: 'Dashboard', path: '/manager/dashboard', icon: LayoutDashboard },
-    { name: 'Orders', path: '/manager/orders', icon: ShoppingBag },
-    { name: 'Menu', path: '/manager/menu', icon: UtensilsCrossed },
-    { name: 'Tables', path: '/manager/tables', icon: Grid },
-    { name: 'Staff', path: '/manager/staff', icon: Users },
-    { name: 'Reports', path: '/manager/reports', icon: BarChart2 },
+    { name: t('manager.layout.dashboard'), path: '/manager/dashboard', icon: LayoutDashboard },
+    { name: t('manager.layout.orders'), path: '/manager/orders', icon: ShoppingBag },
+    { name: t('manager.layout.menu'), path: '/manager/menu', icon: UtensilsCrossed },
+    { name: t('manager.layout.tables'), path: '/manager/tables', icon: Grid },
+    { name: t('manager.layout.staff'), path: '/manager/staff', icon: Users },
+    { name: t('manager.layout.reports'), path: '/manager/reports', icon: BarChart2 },
   ];
 
   const handleLogout = () => {
@@ -72,8 +75,12 @@ const ManagerLayout = ({ children }) => {
                 dir="rtl">
               ليالي قرطاج
             </h1>
-            <p className="text-xs text-[#94a3b8]">Fine Tunisian Cuisine</p>
+            <p className="text-xs text-[#94a3b8]">{t('common.fineCuisine')}</p>
           </div>
+        </div>
+
+        <div className="px-4 pb-3">
+          <LanguageSwitcher />
         </div>
 
         {/* Navigation */}
@@ -102,7 +109,7 @@ const ManagerLayout = ({ children }) => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-slate-200 truncate">{user?.name || 'Manager'}</p>
-              <p className="text-xs font-bold text-slate-500 truncate uppercase tracking-widest">{user?.role || 'manager'}</p>
+              <p className="text-xs font-bold text-slate-500 truncate uppercase tracking-widest">{user?.role || t('manager.layout.manager')}</p>
             </div>
           </div>
           <button 
@@ -110,7 +117,7 @@ const ManagerLayout = ({ children }) => {
             className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent transition-all duration-200"
           >
             <LogOut className="w-5 h-5" />
-            <span className="font-bold tracking-wider uppercase text-sm">Logout</span>
+            <span className="font-bold tracking-wider uppercase text-sm">{t('common.logout')}</span>
           </button>
         </div>
       </aside>
@@ -125,12 +132,15 @@ const ManagerLayout = ({ children }) => {
               ليالي قرطاج
             </h1>
           </div>
-          <button 
-            onClick={toggleMobileMenu}
-            className="p-2 bg-[#132845] text-slate-200 rounded-lg hover:bg-[#1e3a5f] transition-colors border border-[#1e3a5f]"
-          >
-            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher compact />
+            <button 
+              onClick={toggleMobileMenu}
+              className="p-2 bg-[#132845] text-slate-200 rounded-lg hover:bg-[#1e3a5f] transition-colors border border-[#1e3a5f]"
+            >
+              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
         </header>
 
         {/* Page Content */}

@@ -8,6 +8,7 @@ import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import X from 'lucide-react/dist/esm/icons/x';
 import Download from 'lucide-react/dist/esm/icons/download';
 import Printer from 'lucide-react/dist/esm/icons/printer';
+import { useTranslation } from 'react-i18next';
 import ManagerLayout from '../../layouts/ManagerLayout';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
@@ -28,6 +29,7 @@ const getTablesEndpoint = () => {
 };
 
 const TablesPage = () => {
+  const { t } = useTranslation();
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -39,9 +41,7 @@ const TablesPage = () => {
   const user = useAuthStore((state) => state.user);
 
   const getRequestError = (error) => {
-    const status = error?.response?.status;
-    const message = error?.response?.data?.message || error?.message || 'Request failed';
-    return status ? `${status} - ${message}` : message;
+    return error?.response?.data?.message || error?.message || 'Request failed';
   };
 
   const containerVariants = {
@@ -96,12 +96,12 @@ const TablesPage = () => {
     const capacity = Number(newTable.capacity) || 4;
 
     if (!number || number <= 0) {
-      toast.error('Table number must be a positive value');
+      toast.error(t('manager.tables.tableNumberPositive'));
       return;
     }
 
     if (!capacity || capacity <= 0) {
-      toast.error('Capacity must be a positive value');
+      toast.error(t('manager.tables.capacityPositive'));
       return;
     }
 
@@ -120,8 +120,12 @@ const TablesPage = () => {
 
       setIsAddModalOpen(false);
       setNewTable({ number: '', capacity: '4' });
-      toast.success('Table created successfully');
+      toast.success(t('manager.tables.tableCreated'));
     } catch (error) {
+      if (error?.response?.data?.message === 'Table number already exists') {
+        toast.error(t('manager.tables.tableNumberExists'));
+        return;
+      }
       toast.error(getRequestError(error));
     }
   };
@@ -146,7 +150,7 @@ const TablesPage = () => {
     event.preventDefault();
 
     if (!editingTableId) {
-      toast.error('Missing table id for update');
+      toast.error(t('manager.tables.missingTableId'));
       return;
     }
 
@@ -154,12 +158,12 @@ const TablesPage = () => {
     const capacity = Number(editTable.capacity) || 4;
 
     if (!number || number <= 0) {
-      toast.error('Table number must be a positive value');
+      toast.error(t('manager.tables.tableNumberPositive'));
       return;
     }
 
     if (!capacity || capacity <= 0) {
-      toast.error('Capacity must be a positive value');
+      toast.error(t('manager.tables.capacityPositive'));
       return;
     }
 
@@ -182,7 +186,7 @@ const TablesPage = () => {
       }
 
       closeEditModal();
-      toast.success('Table updated successfully');
+      toast.success(t('manager.tables.tableUpdated'));
     } catch (error) {
       toast.error(getRequestError(error));
     }
@@ -192,7 +196,7 @@ const TablesPage = () => {
     try {
       await api.delete(`${getTablesEndpoint()}/${tableId}`);
       setTables((previousTables) => previousTables.filter((table) => table._id !== tableId));
-      toast.success('Table deleted successfully');
+      toast.success(t('manager.tables.tableDeleted'));
     } catch (error) {
       toast.error(getRequestError(error));
     }
@@ -214,12 +218,12 @@ const TablesPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Floor Plan
+              {t('manager.tables.title')}
             </h2>
             <p className="text-slate-400 mt-1 capitalize text-sm">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1 translate-y-px"></span> Available
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 ml-4 mr-1 translate-y-px"></span> Occupied
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#7c6af7] ml-4 mr-1 translate-y-px"></span> Reserved
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1 translate-y-px"></span> {t('manager.tables.available')}
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 ml-4 mr-1 translate-y-px"></span> {t('manager.tables.occupied')}
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#7c6af7] ml-4 mr-1 translate-y-px"></span> {t('manager.tables.reserved')}
             </p>
           </div>
           
@@ -228,7 +232,7 @@ const TablesPage = () => {
             className="flex items-center justify-center space-x-2 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] px-4 py-2.5 rounded-xl font-semibold transition-colors"
           >
             <Plus className="w-5 h-5" />
-            <span>Add Table</span>
+            <span>{t('manager.tables.addTable')}</span>
           </button>
         </div>
 
@@ -248,8 +252,8 @@ const TablesPage = () => {
           {!loading && tables.length === 0 && (
             <div className="col-span-full min-h-[40vh] flex flex-col items-center justify-center text-slate-400">
               <Users className="w-12 h-12 mb-3 opacity-70" />
-              <p className="text-lg font-semibold">No tables found</p>
-              <p className="text-sm text-slate-500 mt-1">Create your first table to generate a QR code.</p>
+              <p className="text-lg font-semibold">{t('manager.tables.noTables')}</p>
+              <p className="text-sm text-slate-500 mt-1">{t('manager.tables.createFirstTable')}</p>
             </div>
           )}
 
@@ -285,7 +289,7 @@ const TablesPage = () => {
                     <button 
                       onClick={() => setSelectedQrTable(table)}
                       className="p-2 bg-[#132845]/80 backdrop-blur-md border border-[#1e3a5f] text-slate-300 hover:text-[#7c6af7] rounded-xl transition-colors group/qr"
-                      title="View QR Code"
+                      title={t('manager.tables.viewQr')}
                     >
                       <QrCode className="w-3.5 h-3.5" />
                     </button>
@@ -302,7 +306,7 @@ const TablesPage = () => {
                   {/* Capacity */}
                   <div className="flex items-center space-x-1.5 text-slate-400 mb-6 bg-[#132845]/50 px-3 py-1 rounded-lg border border-[#1e3a5f]/50">
                     <Users className="w-4 h-4" />
-                    <span className="text-sm font-medium">{table.capacity} Seats</span>
+                    <span className="text-sm font-medium">{table.capacity} {t('manager.tables.seats')}</span>
                   </div>
 
                   {/* Status Indicator */}
@@ -334,7 +338,7 @@ const TablesPage = () => {
                 className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-6 w-full max-w-sm relative z-10 shadow-2xl"
               >
                 <div className="flex justify-between items-center mb-6 border-b border-[#1e3a5f]/50 pb-4">
-                  <h3 className="text-2xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>Add Table</h3>
+                  <h3 className="text-2xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>{t('manager.tables.addTable')}</h3>
                   <button onClick={() => setIsAddModalOpen(false)} className="p-2 text-slate-400 hover:text-[#7c6af7] bg-[#132845] rounded-xl transition-colors">
                     <X className="w-5 h-5" />
                   </button>
@@ -342,22 +346,22 @@ const TablesPage = () => {
 
                 <form className="space-y-5" onSubmit={handleCreateTable}>
                   <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1.5">Table Number</label>
+                    <label className="block text-sm font-medium text-slate-400 mb-1.5">{t('manager.tables.tableNumber')}</label>
                     <input 
                       type="number" 
-                      placeholder="e.g., 5"
+                      placeholder="5"
                       value={newTable.number}
                       onChange={(e) => setNewTable((previous) => ({ ...previous, number: e.target.value }))}
                       className="w-full px-4 py-3 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-[#7c6af7] focus:ring-1 focus:ring-[#7c6af7] transition-all font-bold text-lg"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1.5">Seat Capacity</label>
+                    <label className="block text-sm font-medium text-slate-400 mb-1.5">{t('manager.tables.seatCapacity')}</label>
                     <div className="relative">
                       <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                       <input 
                         type="number" 
-                        placeholder="e.g., 4"
+                        placeholder="4"
                         value={newTable.capacity}
                         onChange={(e) => setNewTable((previous) => ({ ...previous, capacity: e.target.value }))}
                         className="w-full pl-12 pr-4 py-3 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-[#7c6af7] focus:ring-1 focus:ring-[#7c6af7] transition-all"
@@ -365,7 +369,7 @@ const TablesPage = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1.5">Restaurant ID (Auto)</label>
+                    <label className="block text-sm font-medium text-slate-400 mb-1.5">{t('manager.tables.restaurantIdAuto')}</label>
                     <input 
                       type="text" 
                       value={user?.restaurant || ''}
@@ -376,10 +380,10 @@ const TablesPage = () => {
 
                   <div className="pt-4 flex gap-3">
                     <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 py-3 px-4 bg-[#132845] hover:bg-[#1e3a5f] text-slate-300 rounded-xl font-medium transition-colors">
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button type="submit" className="flex-1 py-3 px-4 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] rounded-xl font-semibold transition-colors">
-                      Save Table
+                      {t('manager.tables.saveTable')}
                     </button>
                   </div>
                 </form>
@@ -402,7 +406,7 @@ const TablesPage = () => {
                 className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-6 w-full max-w-sm relative z-10 shadow-2xl"
               >
                 <div className="flex justify-between items-center mb-6 border-b border-[#1e3a5f]/50 pb-4">
-                  <h3 className="text-2xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>Edit Table</h3>
+                  <h3 className="text-2xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>{t('manager.tables.editTable')}</h3>
                   <button onClick={closeEditModal} className="p-2 text-slate-400 hover:text-[#7c6af7] bg-[#132845] rounded-xl transition-colors">
                     <X className="w-5 h-5" />
                   </button>
@@ -410,7 +414,7 @@ const TablesPage = () => {
 
                 <form className="space-y-5" onSubmit={handleUpdateTable}>
                   <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1.5">Table Number</label>
+                    <label className="block text-sm font-medium text-slate-400 mb-1.5">{t('manager.tables.tableNumber')}</label>
                     <input
                       type="number"
                       value={editTable.number}
@@ -420,7 +424,7 @@ const TablesPage = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1.5">Seat Capacity</label>
+                    <label className="block text-sm font-medium text-slate-400 mb-1.5">{t('manager.tables.seatCapacity')}</label>
                     <div className="relative">
                       <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                       <input
@@ -433,24 +437,24 @@ const TablesPage = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1.5">Status</label>
+                    <label className="block text-sm font-medium text-slate-400 mb-1.5">{t('common.status')}</label>
                     <select
                       value={editTable.status}
                       onChange={(e) => setEditTable((previous) => ({ ...previous, status: e.target.value }))}
                       className="w-full px-4 py-3 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 focus:outline-none focus:border-[#7c6af7] focus:ring-1 focus:ring-[#7c6af7] transition-all"
                     >
-                      <option value="available">Available</option>
-                      <option value="occupied">Occupied</option>
-                      <option value="reserved">Reserved</option>
+                      <option value="available">{t('manager.tables.available')}</option>
+                      <option value="occupied">{t('manager.tables.occupied')}</option>
+                      <option value="reserved">{t('manager.tables.reserved')}</option>
                     </select>
                   </div>
 
                   <div className="pt-4 flex gap-3">
                     <button type="button" onClick={closeEditModal} className="flex-1 py-3 px-4 bg-[#132845] hover:bg-[#1e3a5f] text-slate-300 rounded-xl font-medium transition-colors">
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button type="submit" className="flex-1 py-3 px-4 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] rounded-xl font-semibold transition-colors">
-                      Update Table
+                      {t('manager.tables.updateTable')}
                     </button>
                   </div>
                 </form>
@@ -475,7 +479,7 @@ const TablesPage = () => {
                 <div className="flex justify-between items-center p-5 bg-[#132845]/50 border-b border-[#1e3a5f]">
                   <h3 className="text-lg font-bold text-slate-100 flex items-center space-x-2">
                     <QrCode className="w-5 h-5 text-[#7c6af7]" />
-                    <span>Table {selectedQrTable.number} Access</span>
+                    <span>{t('manager.tables.tableAccess', { number: selectedQrTable.number })}</span>
                   </h3>
                   <button onClick={() => setSelectedQrTable(null)} className="p-1.5 text-slate-400 hover:text-white transition-colors">
                     <X className="w-5 h-5" />
@@ -490,7 +494,7 @@ const TablesPage = () => {
                     className="w-48 h-48 rounded-lg shadow-sm"
                   />
                   <p className="mt-6 text-[#0d1f3c] font-bold text-sm text-center uppercase tracking-widest">
-                    Scan for Menu
+                    {t('manager.tables.scanForMenu')}
                   </p>
                 </div>
 
@@ -500,11 +504,11 @@ const TablesPage = () => {
                     className="flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 bg-[#132845] border border-[#1e3a5f] hover:bg-[#1e3a5f] text-slate-300 rounded-xl font-medium transition-colors"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Save</span>
+                    <span>{t('manager.tables.saveQr')}</span>
                   </button>
                   <button className="flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] rounded-xl font-bold transition-colors">
                     <Printer className="w-4 h-4" />
-                    <span>Print</span>
+                    <span>{t('manager.tables.printQr')}</span>
                   </button>
                 </div>
               </Motion.div>

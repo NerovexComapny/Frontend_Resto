@@ -8,12 +8,15 @@ import Eye from 'lucide-react/dist/esm/icons/eye';
 import EyeOff from 'lucide-react/dist/esm/icons/eye-off';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
 import logo from '../../assets/logo.webp';
 import backgroundImg from '../../assets/background.png';
+import LanguageSwitcher from '../../components/shared/LanguageSwitcher';
 
 const LoginPage = () => {
+  const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm();
   const navigate = useNavigate();
@@ -46,7 +49,7 @@ const LoginPage = () => {
           break;
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Login failed');
+      toast.error(error.response?.data?.message || t('auth.loginFailed'));
     }
   };
 
@@ -56,6 +59,10 @@ const LoginPage = () => {
       style={{ backgroundImage: `url(${backgroundImg})` }}
     >
       <div className="absolute inset-0 bg-[#0a1628]/70 backdrop-blur-[2px]" />
+
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageSwitcher />
+      </div>
 
       <Motion.div
         initial={{ opacity: 0, y: 30 }}
@@ -68,7 +75,7 @@ const LoginPage = () => {
         <h1 dir="rtl" className="text-3xl font-bold text-[#0B95E6] text-center font-serif mb-1">
           ليالي قرطاج
         </h1>
-        <p className="text-sm text-[#94a3b8] text-center mb-8">Fine Tunisian Cuisine</p>
+        <p className="text-sm text-[#94a3b8] text-center mb-8">{t('common.fineCuisine')}</p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div>
@@ -76,9 +83,9 @@ const LoginPage = () => {
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#94a3b8]" />
               <input
                 type="email"
-                placeholder="Email"
+                placeholder={t('auth.email')}
                 className={`w-full pl-10 pr-4 py-3 bg-[#132845] border rounded-xl text-[#f0f4f8] placeholder:text-[#94a3b8] outline-none focus:border-[#7c6af7] focus:ring-1 focus:ring-[#7c6af7] ${errors.email ? 'border-red-400' : 'border-[#1e3a5f]'}`}
-                {...register('email', { required: 'Email is required' })}
+                {...register('email', { required: t('auth.emailRequired') })}
               />
             </div>
             {errors.email && <p className="mt-1 text-sm text-red-400">{errors.email.message}</p>}
@@ -89,9 +96,9 @@ const LoginPage = () => {
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#94a3b8]" />
               <input
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Password"
+                placeholder={t('auth.password')}
                 className={`w-full pl-10 pr-12 py-3 bg-[#132845] border rounded-xl text-[#f0f4f8] placeholder:text-[#94a3b8] outline-none focus:border-[#7c6af7] focus:ring-1 focus:ring-[#7c6af7] ${errors.password ? 'border-red-400' : 'border-[#1e3a5f]'}`}
-                {...register('password', { required: 'Password is required' })}
+                {...register('password', { required: t('auth.passwordRequired') })}
               />
               <button
                 type="button"
@@ -112,10 +119,10 @@ const LoginPage = () => {
             {isSubmitting ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Signing in...
+                {t('auth.signingIn')}
               </>
             ) : (
-              'Sign In'
+              t('auth.signIn')
             )}
           </button>
         </form>

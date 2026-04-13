@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import Search from 'lucide-react/dist/esm/icons/search';
 import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart';
@@ -13,20 +13,21 @@ import Utensils from 'lucide-react/dist/esm/icons/utensils';
 import X from 'lucide-react/dist/esm/icons/x';
 import Store from 'lucide-react/dist/esm/icons/store';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { connectSocket } from '../../services/socket';
 import backgroundImg from '../../assets/background.png';
 import logo from '../../assets/logo.webp';
+import LanguageSwitcher from '../../components/shared/LanguageSwitcher';
 
-const DEFAULT_MENU_CATEGORY = { id: 'all', name: 'Tout', nameAr: 'الكل' };
+const DEFAULT_MENU_CATEGORY_ID = 'all';
 
-const ORDER_STEPS = [
-  { id: 'received', label: 'Reçue', icon: Clock },
-  { id: 'preparing', label: 'Préparation', icon: ChefHat },
-  { id: 'ready', label: 'Prête', icon: Utensils },
-  { id: 'served', label: 'Service', icon: ShoppingCart },
-];
+const getDefaultMenuCategory = (t) => ({
+  id: DEFAULT_MENU_CATEGORY_ID,
+  name: t('common.all'),
+  nameAr: t('common.all'),
+});
 
 const MONGO_ID_REGEX = /^[a-f\d]{24}$/i;
 
@@ -75,6 +76,7 @@ const toClientOrderStatus = (status) => {
 };
 
 const MenuPage = () => {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const tableId = String(searchParams.get('tableId') || searchParams.get('table') || '').trim();
   const restaurantQueryValue = String(searchParams.get('restaurant') || '').trim();
@@ -83,7 +85,7 @@ const MenuPage = () => {
   const [restaurantName, setRestaurantName] = useState(
     restaurantQueryValue && !MONGO_ID_REGEX.test(restaurantQueryValue)
       ? restaurantQueryValue
-      : 'ليالي قرطاج'
+      : t('common.appName')
   );
   const [restaurantId, setRestaurantId] = useState(
     MONGO_ID_REGEX.test(restaurantIdQueryValue) ? restaurantIdQueryValue : ''
@@ -161,18 +163,28 @@ const MenuPage = () => {
   const [trackedOrderId, setTrackedOrderId] = useState('');
   const [trackedOrderStatus, setTrackedOrderStatus] = useState('received');
   const [trackedOrderDetails, setTrackedOrderDetails] = useState('');
-  const [menuCategories, setMenuCategories] = useState([DEFAULT_MENU_CATEGORY]);
+  const [menuCategories, setMenuCategories] = useState([getDefaultMenuCategory(t)]);
   const [menuItems, setMenuItems] = useState([]);
   const [menuLoading, setMenuLoading] = useState(true);
   const lastStatusRef = useRef('');
+  const orderSteps = useMemo(
+    () => [
+      { id: 'received', label: t('clientMenu.received'), icon: Clock },
+      { id: 'preparing', label: t('clientMenu.preparing'), icon: ChefHat },
+      { id: 'ready', label: t('clientMenu.ready'), icon: Utensils },
+      { id: 'served', label: t('clientMenu.service'), icon: ShoppingCart },
+    ],
+    [t]
+  );
 
   useEffect(() => {
     let isActive = true;
+    const defaultCategory = getDefaultMenuCategory(t);
 
     const fetchMenuData = async () => {
       if (!restaurantId) {
         if (isActive) {
-          setMenuCategories([DEFAULT_MENU_CATEGORY]);
+          setMenuCategories([defaultCategory]);
           setMenuItems([]);
           setMenuLoading(false);
         }
@@ -197,11 +209,11 @@ const MenuPage = () => {
           ? itemsResponse.data.menuItems.map(normalizeMenuItem).filter((item) => item._id)
           : [];
 
-        setMenuCategories([DEFAULT_MENU_CATEGORY, ...categories]);
+        setMenuCategories([defaultCategory, ...categories]);
         setMenuItems(items);
       } catch {
         if (!isActive) return;
-        setMenuCategories([DEFAULT_MENU_CATEGORY]);
+        setMenuCategories([defaultCategory]);
         setMenuItems([]);
       } finally {
         if (isActive) {
@@ -215,7 +227,7 @@ const MenuPage = () => {
     return () => {
       isActive = false;
     };
-  }, [restaurantId]);
+  }, [restaurantId, t]);
 
   useEffect(() => {
     if (activeCategory !== 'all' && !menuCategories.some((category) => category.id === activeCategory)) {
@@ -318,14 +330,14 @@ const MenuPage = () => {
 
     if (trackedOrderStatus && trackedOrderStatus !== lastStatusRef.current) {
       if (trackedOrderStatus === 'ready') {
-        toast.success('Your order is ready');
+        toast.success(t('clientMenu.orderReadyToast'));
       }
       if (trackedOrderStatus === 'served') {
-        toast.success('Your order has been served');
+        toast.success(t('clientMenu.orderServedToast'));
       }
       lastStatusRef.current = trackedOrderStatus;
     }
-  }, [orderPlaced, trackedOrderStatus]);
+  }, [orderPlaced, t, trackedOrderStatus]);
 
   const handlePlaceOrder = async () => {
     if (isPlacingOrder || cart.length === 0) {
@@ -333,17 +345,17 @@ const MenuPage = () => {
     }
 
     if (!tableId) {
-      toast.error('Missing tableId in QR URL');
+      toast.error(t('clientMenu.missingTableId'));
       return;
     }
 
     if (!restaurantId) {
-      toast.error('Unable to resolve restaurant for this table');
+      toast.error(t('clientMenu.resolveRestaurantError'));
       return;
     }
 
     if (menuLoading) {
-      toast.error('Menu is still loading, please wait a moment');
+      toast.error(t('clientMenu.menuLoadingWait'));
       return;
     }
 
@@ -361,7 +373,7 @@ const MenuPage = () => {
       });
 
       if (items.length === 0 || items.some((item) => !item.menuItem)) {
-        toast.error('Some cart items are invalid, please refresh and try again');
+        toast.error(t('clientMenu.invalidCart'));
         return;
       }
 
@@ -389,7 +401,7 @@ const MenuPage = () => {
       setTrackedOrderDetails(details);
       setOrderPlaced(true);
     } catch (error) {
-      toast.error(error?.response?.data?.message || 'Failed to place order');
+      toast.error(error?.response?.data?.message || t('clientMenu.placeOrderFailed'));
     } finally {
       setIsPlacingOrder(false);
     }
@@ -398,7 +410,7 @@ const MenuPage = () => {
   if (orderPlaced) {
     const activeStepIndex = Math.max(
       0,
-      ORDER_STEPS.findIndex((step) => step.id === trackedOrderStatus)
+      orderSteps.findIndex((step) => step.id === trackedOrderStatus)
     );
 
     return (
@@ -412,6 +424,10 @@ const MenuPage = () => {
         }}
       >
         <div className="absolute inset-0 bg-white/60" />
+
+        <div className="absolute top-4 right-4 z-20">
+          <LanguageSwitcher />
+        </div>
 
         <Motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -431,14 +447,14 @@ const MenuPage = () => {
             <CheckCircle className="w-12 h-12" />
           </Motion.div>
 
-          <p className="text-xl font-semibold text-[#0a1628]">Votre commande est confirmée!</p>
+          <p className="text-xl font-semibold text-[#0a1628]">{t('clientMenu.orderConfirmed')}</p>
           <p className="mt-2 text-[#c9963a] font-bold text-lg">{confirmedOrderNumber}</p>
           {trackedOrderDetails && (
             <p className="mt-1 text-xs text-[#0a1628]/65">{trackedOrderDetails}</p>
           )}
 
           <div className="mt-7 space-y-3 text-left">
-            {ORDER_STEPS.map((step, index) => {
+            {orderSteps.map((step, index) => {
               const Icon = step.icon;
               const isCurrent = index === activeStepIndex;
               const isCompleted = index < activeStepIndex;
@@ -467,7 +483,7 @@ const MenuPage = () => {
             }}
             className="mt-8 px-6 py-3 rounded-xl bg-[#0a1628] text-white font-bold hover:bg-[#1e3a5f] transition-colors"
           >
-            Nouvelle commande
+            {t('clientMenu.newOrder')}
           </button>
         </Motion.div>
       </div>
@@ -497,9 +513,12 @@ const MenuPage = () => {
               </div>
             </div>
 
-            <div className="bg-[#0a1628] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm inline-flex items-center gap-2">
-              <Store className="w-4 h-4 text-[#e8c56a]" />
-              <span>{isResolvingTable ? 'Resolving table...' : `Table ${tableNumber}`}</span>
+            <div className="flex items-center gap-2">
+              <LanguageSwitcher compact />
+              <div className="bg-[#0a1628] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm inline-flex items-center gap-2">
+                <Store className="w-4 h-4 text-[#e8c56a]" />
+                <span>{isResolvingTable ? t('clientMenu.resolvingTable') : t('clientMenu.tableLabel', { number: tableNumber })}</span>
+              </div>
             </div>
           </div>
         </header>
@@ -509,7 +528,7 @@ const MenuPage = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#0a1628]/50" />
             <input
               type="text"
-              placeholder="Rechercher un plat..."
+              placeholder={t('clientMenu.searchDish')}
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/85 border border-[#c9963a]/20 text-[#0a1628] placeholder:text-[#0a1628]/50 outline-none focus:border-[#c9963a] focus:ring-2 focus:ring-[#c9963a]/25"
@@ -543,7 +562,7 @@ const MenuPage = () => {
           {menuLoading && (
             <div className="col-span-full bg-white/80 border border-[#c9963a]/20 rounded-2xl p-8 text-center text-[#0a1628]/70">
               <div className="mx-auto h-7 w-7 rounded-full border-2 border-[#c9963a]/30 border-t-[#c9963a] animate-spin" />
-              <p className="text-sm mt-3 font-semibold">Chargement du menu...</p>
+              <p className="text-sm mt-3 font-semibold">{t('clientMenu.loadingMenu')}</p>
             </div>
           )}
 
@@ -602,7 +621,7 @@ const MenuPage = () => {
                         </button>
                       )
                     ) : (
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#0a1628]/55">Indisponible</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#0a1628]/55">{t('clientMenu.unavailable')}</span>
                     )}
                   </div>
                 </div>
@@ -613,12 +632,12 @@ const MenuPage = () => {
           {!menuLoading && filteredItems.length === 0 && (
             <div className="col-span-full bg-white/80 border border-[#c9963a]/20 rounded-2xl p-8 text-center text-[#0a1628]/70">
               <p className="text-lg font-semibold">
-                {!restaurantId ? 'Restaurant introuvable' : 'Aucun plat trouve'}
+                {!restaurantId ? t('clientMenu.restaurantNotFound') : t('clientMenu.noItemsFound')}
               </p>
               <p className="text-sm mt-1">
                 {!restaurantId
-                  ? 'Veuillez rescanner le QR code de la table pour charger le menu.'
-                  : 'Essayez une autre categorie ou modifiez votre recherche.'}
+                  ? t('clientMenu.retryScan')
+                  : t('clientMenu.tryAnotherCategory')}
               </p>
             </div>
           )}
@@ -644,7 +663,7 @@ const MenuPage = () => {
                     {cartCount}
                   </span>
                 </div>
-                <span className="font-bold">Panier</span>
+                <span className="font-bold">{t('clientMenu.cart')}</span>
               </div>
               <span className="font-bold text-[#e8c56a]">{cartTotal.toFixed(3)} TND</span>
             </button>
@@ -671,7 +690,7 @@ const MenuPage = () => {
               className="relative bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
             >
               <div className="p-5 border-b border-[#0a1628]/10 flex items-center justify-between">
-                <h2 className="text-xl font-bold text-[#0a1628]">Votre commande</h2>
+                <h2 className="text-xl font-bold text-[#0a1628]">{t('clientMenu.yourOrder')}</h2>
                 <button onClick={() => setIsCartOpen(false)} className="p-2 rounded-full bg-[#0a1628]/5 text-[#0a1628]/70">
                   <X className="w-4 h-4" />
                 </button>
@@ -704,7 +723,7 @@ const MenuPage = () => {
                       </div>
                     </div>
                   ))}
-                  {cart.length === 0 && <p className="text-center text-[#0a1628]/50 py-4">Panier vide.</p>}
+                  {cart.length === 0 && <p className="text-center text-[#0a1628]/50 py-4">{t('clientMenu.emptyCart')}</p>}
                 </div>
 
                 <div>
@@ -713,13 +732,13 @@ const MenuPage = () => {
                     rows="2"
                     value={orderNotes}
                     onChange={(event) => setOrderNotes(event.target.value)}
-                    placeholder="Allergies ou remarques..."
+                    placeholder={t('clientMenu.notesPlaceholder')}
                     className="w-full rounded-xl border border-[#0a1628]/15 bg-[#0a1628]/5 p-3 text-sm outline-none focus:border-[#c9963a] focus:ring-2 focus:ring-[#c9963a]/20"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-[#0a1628] mb-2">Paiement</label>
+                  <label className="block text-sm font-bold text-[#0a1628] mb-2">{t('clientMenu.payment')}</label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setPaymentMethod('cash')}
@@ -730,7 +749,7 @@ const MenuPage = () => {
                       }`}
                     >
                       <Banknote className="w-5 h-5" />
-                      <span className="text-xs font-bold uppercase tracking-wider">Espèces</span>
+                      <span className="text-xs font-bold uppercase tracking-wider">{t('clientMenu.cash')}</span>
                     </button>
 
                     <button
@@ -742,7 +761,7 @@ const MenuPage = () => {
                       }`}
                     >
                       <CreditCard className="w-5 h-5" />
-                      <span className="text-xs font-bold uppercase tracking-wider">Carte</span>
+                      <span className="text-xs font-bold uppercase tracking-wider">{t('clientMenu.card')}</span>
                     </button>
                   </div>
                 </div>
@@ -750,7 +769,7 @@ const MenuPage = () => {
 
               <div className="p-5 border-t border-[#0a1628]/10 bg-white">
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-[#0a1628]/70 font-medium">Total</span>
+                  <span className="text-[#0a1628]/70 font-medium">{t('common.total')}</span>
                   <span className="text-xl font-bold text-[#0a1628]">{cartTotal.toFixed(3)} TND</span>
                 </div>
                 <button
@@ -758,7 +777,7 @@ const MenuPage = () => {
                   disabled={cart.length === 0 || isPlacingOrder}
                   className="w-full py-4 rounded-xl bg-[#c9963a] hover:bg-[#a07830] text-[#0a1628] font-bold text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isPlacingOrder ? 'Placing Order...' : 'Place Order'}
+                  {isPlacingOrder ? t('clientMenu.placingOrder') : t('clientMenu.placeOrder')}
                 </button>
               </div>
             </Motion.div>

@@ -4,9 +4,11 @@ import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
 import ChefHat from 'lucide-react/dist/esm/icons/chef-hat';
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
 import Flame from 'lucide-react/dist/esm/icons/flame';
+import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
 import { connectSocket } from '../../services/socket';
+import LanguageSwitcher from '../../components/shared/LanguageSwitcher';
 
 const getOrdersEndpoint = () => {
   const baseURL = String(api.defaults.baseURL || '');
@@ -89,7 +91,7 @@ setInterval(() => {
   tickListeners.forEach(fn => fn(globalTick));
 }, 1000);
 
-const OrderTicket = memo(({ order, onAction, isUpdating }) => {
+const OrderTicket = memo(({ order, onAction, isUpdating, labels }) => {
   const [, forceUpdate] = useState(0);
   const actionOrderId = order._id || order.id;
 
@@ -119,7 +121,9 @@ const OrderTicket = memo(({ order, onAction, isUpdating }) => {
       <div className="flex justify-between items-start border-b border-[#1e3a5f] pb-4 z-10">
         <div>
           <div className="text-5xl font-bold text-[#c9963a]" style={{ fontFamily: "'Playfair Display', serif" }}>
-            {order.table !== 'Takeaway' ? 'Table ' + order.table : 'Takeaway'}
+            {(String(order.table).toLowerCase() !== 'takeaway')
+                ? `${labels.table} ${order.table}`
+                : labels.takeaway}
           </div>
           <div className="text-slate-400 font-mono tracking-widest text-lg mt-1">{order.orderNumber}</div>
         </div>
@@ -158,7 +162,7 @@ const OrderTicket = memo(({ order, onAction, isUpdating }) => {
             }
           >
             <ChefHat className="w-6 h-6" />
-            <span>{isUpdating ? 'Starting...' : 'Start Cooking'}</span>
+            <span>{isUpdating ? labels.starting : labels.startCooking}</span>
           </button>
         )}
         {order.status === 'in_progress' && (
@@ -173,7 +177,7 @@ const OrderTicket = memo(({ order, onAction, isUpdating }) => {
             }
           >
             <CheckCircle2 className="w-6 h-6" />
-            <span>{isUpdating ? 'Updating...' : 'Mark Ready'}</span>
+            <span>{isUpdating ? labels.updating : labels.markReady}</span>
           </button>
         )}
         {order.status === 'ready' && (
@@ -187,7 +191,7 @@ const OrderTicket = memo(({ order, onAction, isUpdating }) => {
                 : "text-slate-400 bg-[#1e3a5f] hover:bg-[#1e4a75] border-[#1e4a75] active:scale-[0.98]")
             }
           >
-            {isUpdating ? 'Clearing...' : 'Clear Ticket'}
+            {isUpdating ? labels.clearing : labels.clearTicket}
           </button>
         )}
       </div>
@@ -196,6 +200,7 @@ const OrderTicket = memo(({ order, onAction, isUpdating }) => {
 });
 
 const KitchenDisplayPage = () => {
+  const { t } = useTranslation();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pendingActions, setPendingActions] = useState({});
@@ -327,16 +332,27 @@ const KitchenDisplayPage = () => {
   const readyOrders = orders.filter(o => o.status === 'ready');
 
   const columnData = [
-    { key: 'new', label: 'New Orders', orders: newOrders, count: newOrders.length, headerClass: 'bg-[#c9963a]/10 text-[#c9963a] border-[#c9963a]/20', badgeClass: 'bg-[#c9963a] text-slate-900', emptyIcon: <Flame className="w-16 h-16 mb-4" />, emptyText: 'No New Orders', borderClass: 'border-r-4 border-[#132845]' },
-    { key: 'in_progress', label: 'In Progress', orders: inProgressOrders, count: inProgressOrders.length, headerClass: 'bg-blue-500/10 text-blue-500 border-blue-500/20', badgeClass: 'bg-blue-500 text-white', emptyIcon: <ChefHat className="w-16 h-16 mb-4" />, emptyText: 'Clear Board', borderClass: 'border-r-4 border-[#132845]' },
-    { key: 'ready', label: 'Ready to Serve', orders: readyOrders, count: readyOrders.length, headerClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', badgeClass: 'bg-emerald-500 text-white', emptyIcon: <CheckCircle2 className="w-16 h-16 mb-4" />, emptyText: 'Nothing Ready', borderClass: '' },
+    { key: 'new', label: t('kitchen.newOrders'), orders: newOrders, count: newOrders.length, headerClass: 'bg-[#c9963a]/10 text-[#c9963a] border-[#c9963a]/20', badgeClass: 'bg-[#c9963a] text-slate-900', emptyIcon: <Flame className="w-16 h-16 mb-4" />, emptyText: t('kitchen.noNewOrders'), borderClass: 'border-r-4 border-[#132845]' },
+    { key: 'in_progress', label: t('kitchen.inProgress'), orders: inProgressOrders, count: inProgressOrders.length, headerClass: 'bg-blue-500/10 text-blue-500 border-blue-500/20', badgeClass: 'bg-blue-500 text-white', emptyIcon: <ChefHat className="w-16 h-16 mb-4" />, emptyText: t('kitchen.clearBoard'), borderClass: 'border-r-4 border-[#132845]' },
+    { key: 'ready', label: t('kitchen.readyToServe'), orders: readyOrders, count: readyOrders.length, headerClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', badgeClass: 'bg-emerald-500 text-white', emptyIcon: <CheckCircle2 className="w-16 h-16 mb-4" />, emptyText: t('kitchen.nothingReady'), borderClass: '' },
   ];
+
+  const ticketLabels = {
+    table: t('common.table'),
+    takeaway: t('kitchen.takeaway'),
+    startCooking: t('kitchen.startCooking'),
+    starting: t('kitchen.starting'),
+    markReady: t('kitchen.markReady'),
+    updating: t('kitchen.updating'),
+    clearTicket: t('kitchen.clearTicket'),
+    clearing: t('kitchen.clearing'),
+  };
 
   return (
     <div className="h-screen w-full bg-[#0a1628] text-slate-100 flex flex-col font-sans overflow-hidden">
       <header className="h-20 bg-[#0d1f3c] border-b-2 border-[#1e3a5f] px-6 flex items-center justify-between shrink-0 shadow-lg z-20">
         <div className="flex items-center space-x-6">
-          <h1 className="text-3xl font-bold tracking-wider text-[#c9963a] uppercase">Kitchen Display</h1>
+          <h1 className="text-3xl font-bold tracking-wider text-[#c9963a] uppercase">{t('kitchen.title')}</h1>
           <div className="flex gap-3">
             {columnData.map(col => (
               <span key={col.key} className={"px-3 py-1 text-sm font-bold rounded-lg " + (col.count > 0 ? col.headerClass + " border" : "bg-[#132845] text-slate-500")}>
@@ -345,7 +361,10 @@ const KitchenDisplayPage = () => {
             ))}
           </div>
         </div>
-        <ClockDisplay />
+        <div className="flex items-center gap-3">
+          <LanguageSwitcher compact />
+          <ClockDisplay />
+        </div>
       </header>
 
       <main className="flex-1 min-h-0 grid grid-cols-3 gap-0">
@@ -373,6 +392,7 @@ const KitchenDisplayPage = () => {
                     order={order}
                     onAction={handleAction}
                     isUpdating={Boolean(pendingActions[orderId])}
+                    labels={ticketLabels}
                   />
                 );
               })}

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { Toaster } from 'react-hot-toast';
 import ErrorBoundary from './components/shared/ErrorBoundary';
+import './i18n';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register'
 

@@ -7,6 +7,7 @@ import Utensils from 'lucide-react/dist/esm/icons/utensils';
 import Clock from 'lucide-react/dist/esm/icons/clock';
 import X from 'lucide-react/dist/esm/icons/x';
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
+import { useTranslation } from 'react-i18next';
 import ManagerLayout from '../../layouts/ManagerLayout';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
@@ -48,6 +49,7 @@ const getOrderDateKey = (value) => {
 };
 
 const OrdersPage = () => {
+  const { t } = useTranslation();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -98,7 +100,7 @@ const OrdersPage = () => {
     const handleNewOrder = (data) => {
       if (!data?.order) return;
       setOrders((prev) => [normalizeOrder(data.order), ...prev]);
-      toast.success('New order received!');
+      toast.success(t('waiter.newOrderToast'));
     };
 
     const handleOrderStatusUpdated = (data) => {
@@ -143,31 +145,33 @@ const OrdersPage = () => {
 
     const diffInMinutes = Math.floor((currentTime - createdAt) / 60000);
     if (diffInMinutes < 1) {
-      return 'Just now';
+      return t('manager.orders.justNow');
     }
     if (diffInMinutes < 60) {
-      return `${diffInMinutes} min ago`;
+      return t('manager.orders.minAgo', { count: diffInMinutes });
     }
     const hours = Math.floor(diffInMinutes / 60);
-    return `${hours} hr${hours > 1 ? 's' : ''} ago`;
+    return hours > 1
+      ? t('manager.orders.hrsAgo', { count: hours })
+      : t('manager.orders.hrAgo', { count: hours });
   };
 
   const getStatusInfo = (status) => {
     switch (status) {
       case 'pending':
-        return { label: 'Pending', bg: 'bg-[#7c6af7]/10 text-[#7c6af7] border-[#7c6af7]/20' };
+        return { label: t('manager.orders.pending'), bg: 'bg-[#7c6af7]/10 text-[#7c6af7] border-[#7c6af7]/20' };
       case 'confirmed':
-        return { label: 'Confirmed', bg: 'bg-blue-500/10 text-blue-500 border-blue-500/20' };
+        return { label: t('manager.orders.confirmed'), bg: 'bg-blue-500/10 text-blue-500 border-blue-500/20' };
       case 'preparing':
-        return { label: 'Preparing', bg: 'bg-[#0891b2]/10 text-[#22d3ee] border-[#0891b2]/20' };
+        return { label: t('manager.orders.preparing'), bg: 'bg-[#0891b2]/10 text-[#22d3ee] border-[#0891b2]/20' };
       case 'ready':
-        return { label: 'Ready', bg: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' };
+        return { label: t('manager.orders.ready'), bg: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' };
       case 'served':
-        return { label: 'Served', bg: 'bg-slate-500/10 text-slate-400 border-slate-500/20' };
+        return { label: t('manager.orders.served'), bg: 'bg-slate-500/10 text-slate-400 border-slate-500/20' };
       case 'cancelled':
-        return { label: 'Cancelled', bg: 'bg-red-500/10 text-red-500 border-red-500/20' };
+        return { label: t('manager.orders.cancelled'), bg: 'bg-red-500/10 text-red-500 border-red-500/20' };
       default:
-        return { label: 'Unknown', bg: 'bg-slate-500/10 text-slate-400 border-slate-500/20' };
+        return { label: t('manager.orders.unknown'), bg: 'bg-slate-500/10 text-slate-400 border-slate-500/20' };
     }
   };
 
@@ -257,38 +261,38 @@ const OrdersPage = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h2 className="text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Orders Overview
+            {t('manager.orders.title')}
           </h2>
 
           <div className="flex items-center space-x-2 bg-[#0d1f3c] px-4 py-2 border border-[#1e3a5f] rounded-xl text-sm font-medium text-[#7c6af7]">
             <div className="w-2 h-2 rounded-full bg-[#7c6af7] animate-pulse"></div>
-            <span>Monitoring ({orders.length} Total)</span>
+            <span>{t('manager.orders.monitoring', { count: orders.length })}</span>
           </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
           <div className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-xl px-4 py-3">
-            <p className="text-xs uppercase tracking-wider text-slate-500">Total</p>
+            <p className="text-xs uppercase tracking-wider text-slate-500">{t('manager.orders.total')}</p>
             <p className="text-xl font-bold text-slate-100 mt-1">{summaryCounts.total}</p>
           </div>
           <div className="bg-[#0d1f3c] border border-[#7c6af7]/20 rounded-xl px-4 py-3">
-            <p className="text-xs uppercase tracking-wider text-slate-500">Pending</p>
+            <p className="text-xs uppercase tracking-wider text-slate-500">{t('manager.orders.pending')}</p>
             <p className="text-xl font-bold text-[#7c6af7] mt-1">{summaryCounts.pending}</p>
           </div>
           <div className="bg-[#0d1f3c] border border-[#0891b2]/20 rounded-xl px-4 py-3">
-            <p className="text-xs uppercase tracking-wider text-slate-500">Preparing</p>
+            <p className="text-xs uppercase tracking-wider text-slate-500">{t('manager.orders.preparing')}</p>
             <p className="text-xl font-bold text-[#22d3ee] mt-1">{summaryCounts.preparing}</p>
           </div>
           <div className="bg-[#0d1f3c] border border-emerald-500/20 rounded-xl px-4 py-3">
-            <p className="text-xs uppercase tracking-wider text-slate-500">Ready</p>
+            <p className="text-xs uppercase tracking-wider text-slate-500">{t('manager.orders.ready')}</p>
             <p className="text-xl font-bold text-emerald-500 mt-1">{summaryCounts.ready}</p>
           </div>
           <div className="bg-[#0d1f3c] border border-slate-500/20 rounded-xl px-4 py-3">
-            <p className="text-xs uppercase tracking-wider text-slate-500">Served</p>
+            <p className="text-xs uppercase tracking-wider text-slate-500">{t('manager.orders.served')}</p>
             <p className="text-xl font-bold text-slate-300 mt-1">{summaryCounts.served}</p>
           </div>
           <div className="bg-[#0d1f3c] border border-red-500/20 rounded-xl px-4 py-3">
-            <p className="text-xs uppercase tracking-wider text-slate-500">Cancelled</p>
+            <p className="text-xs uppercase tracking-wider text-slate-500">{t('manager.orders.cancelled')}</p>
             <p className="text-xl font-bold text-red-500 mt-1">{summaryCounts.cancelled}</p>
           </div>
         </div>
@@ -298,7 +302,7 @@ const OrdersPage = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
             <input
               type="text"
-              placeholder="Search by order number..."
+              placeholder={t('manager.orders.searchByOrderNumber')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#7c6af7] transition-colors"
@@ -313,8 +317,16 @@ const OrdersPage = () => {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full pl-10 pr-8 py-2 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 appearance-none focus:outline-none focus:border-[#7c6af7] transition-colors cursor-pointer"
               >
-                {['All', 'Pending', 'Confirmed', 'Preparing', 'Ready', 'Served', 'Cancelled'].map((option) => (
-                  <option key={option} value={option}>{option}</option>
+                {[
+                  { value: 'All', label: t('common.all') },
+                  { value: 'Pending', label: t('manager.orders.pending') },
+                  { value: 'Confirmed', label: t('manager.orders.confirmed') },
+                  { value: 'Preparing', label: t('manager.orders.preparing') },
+                  { value: 'Ready', label: t('manager.orders.ready') },
+                  { value: 'Served', label: t('manager.orders.served') },
+                  { value: 'Cancelled', label: t('manager.orders.cancelled') },
+                ].map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
             </div>
@@ -370,7 +382,7 @@ const OrdersPage = () => {
                           onClick={() => openCancelModal(order)}
                           className="px-2.5 py-1 rounded-md text-xs font-bold bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 transition-colors"
                         >
-                          Cancel
+                          {t('manager.orders.cancelAction')}
                         </button>
                       )}
                     </div>
@@ -379,7 +391,7 @@ const OrdersPage = () => {
                   <div className="p-5 flex-1 flex flex-col">
                     <div className="flex items-center space-x-2 text-slate-200 font-semibold mb-4 bg-[#132845] p-3 rounded-xl border border-[#1e3a5f]">
                       <Utensils className="w-5 h-5 text-[#7c6af7]" />
-                      <span>Table {order.table.number}</span>
+                      <span>{t('common.table')} {order.table.number}</span>
                     </div>
 
                     <div className="space-y-3 flex-1">
@@ -394,7 +406,7 @@ const OrdersPage = () => {
                     </div>
 
                     <div className="mt-6 pt-4 border-t border-[#1e3a5f] flex items-center justify-between">
-                      <span className="text-sm font-medium text-slate-400">Total Amount</span>
+                      <span className="text-sm font-medium text-slate-400">{t('manager.orders.totalAmount')}</span>
                       <span className="text-lg font-bold text-slate-100">{order.totalAmount.toFixed(2)} TND</span>
                     </div>
                   </div>
@@ -409,7 +421,7 @@ const OrdersPage = () => {
                 className="col-span-full py-12 flex flex-col items-center justify-center text-slate-500 bg-[#0d1f3c] rounded-2xl border border-[#1e3a5f] border-dashed"
               >
                 <Utensils className="w-12 h-12 mb-4 opacity-50" />
-                <p className="text-lg font-medium">No orders found matching your filters.</p>
+                <p className="text-lg font-medium">{t('manager.orders.noOrdersFound')}</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -438,7 +450,7 @@ const OrdersPage = () => {
                   <span className="w-9 h-9 rounded-full bg-red-500/15 text-red-400 flex items-center justify-center">
                     <AlertTriangle className="w-5 h-5" />
                   </span>
-                  <h3 className="text-lg font-bold text-slate-100">Cancel Order</h3>
+                  <h3 className="text-lg font-bold text-slate-100">{t('manager.orders.cancelOrder')}</h3>
                 </div>
                 <button
                   onClick={closeCancelModal}
@@ -449,11 +461,9 @@ const OrdersPage = () => {
               </div>
 
               <div className="p-5 space-y-5">
-                <p className="text-slate-300">
-                  Are you sure you want to cancel this order?
-                </p>
+                <p className="text-slate-300">{t('manager.orders.confirmCancelPrompt')}</p>
                 <div className="text-sm text-slate-400 bg-[#132845] border border-[#1e3a5f] rounded-xl p-3">
-                  <span className="font-semibold text-slate-200">{cancelTarget.orderNumber}</span> â€¢ Table {cancelTarget.table.number}
+                  <span className="font-semibold text-slate-200">{cancelTarget.orderNumber}</span> • {t('common.table')} {cancelTarget.table.number}
                 </div>
 
                 <div className="flex justify-end gap-3">
@@ -461,13 +471,13 @@ const OrdersPage = () => {
                     onClick={closeCancelModal}
                     className="px-4 py-2.5 rounded-xl bg-[#132845] border border-[#1e3a5f] text-slate-300 hover:bg-[#1e3a5f] transition-colors"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     onClick={handleConfirmCancel}
                     className="px-4 py-2.5 rounded-xl bg-red-500 text-white hover:bg-red-400 font-semibold transition-colors"
                   >
-                    Confirm
+                    {t('manager.orders.confirm')}
                   </button>
                 </div>
               </div>

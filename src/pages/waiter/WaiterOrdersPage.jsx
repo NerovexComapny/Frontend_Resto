@@ -12,9 +12,11 @@ import BellRing from 'lucide-react/dist/esm/icons/bell-ring';
 import LogOut from 'lucide-react/dist/esm/icons/log-out';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
 import { connectSocket } from '../../services/socket';
+import LanguageSwitcher from '../../components/shared/LanguageSwitcher';
 
 const ACTIVE_API_STATUSES = new Set(['pending', 'confirmed', 'preparing', 'ready']);
 
@@ -35,18 +37,18 @@ const toId = (value) => {
   return String(value);
 };
 
-const formatTimeAgo = (value) => {
-  if (!value) return 'Just now';
+const formatTimeAgo = (value, t) => {
+  if (!value) return t('waiter.justNow');
 
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Just now';
+  if (Number.isNaN(date.getTime())) return t('waiter.justNow');
 
   const diffInMinutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
-  if (diffInMinutes < 1) return 'Just now';
-  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+  if (diffInMinutes < 1) return t('waiter.justNow');
+  if (diffInMinutes < 60) return t('waiter.minAgo', { count: diffInMinutes });
 
   const diffInHours = Math.floor(diffInMinutes / 60);
-  return `${diffInHours}h ago`;
+  return t('waiter.hourAgo', { count: diffInHours });
 };
 
 const toUiOrderStatus = (apiStatus) => {
@@ -70,17 +72,19 @@ const toApiOrderStatus = (uiStatus) => {
   return uiStatus;
 };
 
-const getOrderDisplayNumber = (orderNumber, fallbackId) => {
+const getOrderDisplayNumber = (orderNumber, fallbackId, t) => {
   const normalized = String(orderNumber || '').trim();
   if (normalized) return normalized;
 
   const fallback = String(fallbackId || '').trim();
-  if (!fallback) return 'Order #-';
+  if (!fallback) return t ? t('waiter.orderPlaceholder') : 'Order #-';
 
-  return `Order #${fallback.slice(-4)}`;
+  return t
+    ? t('waiter.orderShort', { suffix: fallback.slice(-4) })
+    : `Order #${fallback.slice(-4)}`;
 };
 
-const normalizeOrder = (order) => {
+const normalizeOrder = (order, t) => {
   const tableNumber = order?.table && typeof order.table === 'object'
     ? order.table.number
     : order?.table;
@@ -110,18 +114,18 @@ const normalizeOrder = (order) => {
         }))
       : [],
     totalAmount: Number(order?.totalAmount || 0),
-    time: formatTimeAgo(order?.createdAt),
+    time: formatTimeAgo(order?.createdAt, t),
     createdAt: order?.createdAt,
   };
 };
 
-const formatOrderDetails = (orderItems) => {
+const formatOrderDetails = (orderItems, t) => {
   if (!Array.isArray(orderItems) || orderItems.length === 0) {
-    return 'No item details';
+    return t('waiter.noItemDetails');
   }
 
   return orderItems
-    .map((item) => `${Number(item?.qty || 1)}x ${item?.name || 'Item'}`)
+    .map((item) => `${Number(item?.qty || 1)}x ${item?.name || t('kitchen.item')}`)
     .join(', ');
 };
 
@@ -169,6 +173,7 @@ const buildWaiterTables = (apiTables, waiterTableIds, orders, previousNeedsHelpB
 };
 
 const WaiterOrdersPage = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('my-tables');
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -185,6 +190,27 @@ const WaiterOrdersPage = () => {
   const cachedTablesRef = useRef([]);
   const waiterTableIdsRef = useRef(new Set());
   const previousNeedsHelpRef = useRef({});
+
+  const statusLabels = useMemo(
+    () => ({
+      new: t('manager.orders.pending'),
+      in_progress: t('manager.orders.preparing'),
+      ready: t('manager.orders.ready'),
+      served: t('manager.orders.served'),
+    }),
+    [t]
+  );
+
+  const filterOptions = useMemo(
+    () => [
+      { value: 'all', label: t('common.all') },
+      { value: 'new', label: t('manager.orders.pending') },
+      { value: 'in_progress', label: t('manager.orders.preparing') },
+      { value: 'ready', label: t('manager.orders.ready') },
+      { value: 'served', label: t('manager.orders.served') },
+    ],
+    [t]
+  );
 
   const userContext = useMemo(() => {
     if (user) return user;
@@ -233,12 +259,12 @@ const WaiterOrdersPage = () => {
       {
         id: Date.now() + Math.random(),
         read: false,
-        time: 'Just now',
+        time: t('waiter.justNow'),
         ...notification,
       },
       ...previousNotifications,
     ]);
-  }, []);
+  }, [t]);
 
   const unreadCount = useMemo(
     () => notifications.filter((notification) => !notification.read).length,
@@ -270,8 +296,8 @@ const WaiterOrdersPage = () => {
       const previousNeedsHelp = previousNeedsHelpRef.current[table.id] ?? false;
 
       if (!previousNeedsHelp && table.needsHelp && Notification.permission === 'granted') {
-        new Notification('Table Call!', {
-          body: `Table ${table.number} is calling for assistance`,
+        new Notification(t('waiter.tableCallTitle'), {
+          body: t('waiter.tableCallBody', { table: table.number }),
         });
       }
 
@@ -309,7 +335,7 @@ const WaiterOrdersPage = () => {
 
         const activeOrders = waiterOrders
           .filter((order) => ACTIVE_API_STATUSES.has(order?.status))
-          .map(normalizeOrder);
+          .map((order) => normalizeOrder(order, t));
 
         const assignedTableIds = new Set(
           waiterOrders
@@ -343,7 +369,7 @@ const WaiterOrdersPage = () => {
 
       const incomingOrder = data.order;
       const incomingId = toId(incomingOrder._id);
-      const normalizedOrder = normalizeOrder(incomingOrder);
+      const normalizedOrder = normalizeOrder(incomingOrder, t);
       const belongsToWaiter = belongsToCurrentWaiter(incomingOrder);
 
       setOrders((previousOrders) => {
@@ -383,7 +409,7 @@ const WaiterOrdersPage = () => {
         return;
       }
 
-      const normalizedOrder = normalizeOrder(incomingOrder);
+      const normalizedOrder = normalizeOrder(incomingOrder, t);
 
       setOrders((previousOrders) => {
         const exists = previousOrders.some((order) => order.id === normalizedOrder.id);
@@ -398,7 +424,11 @@ const WaiterOrdersPage = () => {
 
       addNotification({
         type: 'ready',
-        message: `Table ${normalizedOrder.table} ready: ${getOrderDisplayNumber(normalizedOrder.orderNumber, normalizedOrder.id)} (${formatOrderDetails(normalizedOrder.items)})`,
+        message: t('waiter.readyNotification', {
+          table: normalizedOrder.table,
+          order: getOrderDisplayNumber(normalizedOrder.orderNumber, normalizedOrder.id, t),
+          details: formatOrderDetails(normalizedOrder.items, t),
+        }),
       });
     };
 
@@ -414,7 +444,7 @@ const WaiterOrdersPage = () => {
         return;
       }
 
-      const normalizedOrder = normalizeOrder(incomingOrder);
+      const normalizedOrder = normalizeOrder(incomingOrder, t);
       if (normalizedOrder.tableId) {
         waiterTableIdsRef.current.add(normalizedOrder.tableId);
       }
@@ -431,7 +461,7 @@ const WaiterOrdersPage = () => {
 
       addNotification({
         type: 'new',
-        message: `New order from Table ${normalizedOrder.table}`,
+        message: t('waiter.newOrderNotification', { table: normalizedOrder.table }),
       });
     };
 
@@ -449,7 +479,7 @@ const WaiterOrdersPage = () => {
       socket.off('new_order', handleNewOrder);
       socket.off('order_ready', handleOrderReady);
     };
-  }, [addNotification, belongsToCurrentWaiter, ordersEndpoint, restaurantId, syncTablesFromOrders, tablesEndpoint]);
+  }, [addNotification, belongsToCurrentWaiter, ordersEndpoint, restaurantId, syncTablesFromOrders, t, tablesEndpoint]);
 
   const filteredOrders = useMemo(() => {
     const baseOrders = orderFilter === 'all'
@@ -513,7 +543,6 @@ const WaiterOrdersPage = () => {
             ? {
                 ...order,
                 status: newStatus,
-                time: 'Just now',
               }
             : order
         );
@@ -523,7 +552,7 @@ const WaiterOrdersPage = () => {
       });
 
       if (newStatus === 'served') {
-        toast.success('Order marked as served!');
+        toast.success(t('waiter.orderServedToast'));
       }
     } catch (error) {
       toast.error(error.response?.data?.message || error.message);
@@ -555,16 +584,17 @@ const WaiterOrdersPage = () => {
             <UserCircle className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-lg font-bold">Waiter Dashboard</h1>
-            <p className="text-xs text-slate-400">Zone A</p>
+            <h1 className="text-lg font-bold">{t('waiter.title')}</h1>
+            <p className="text-xs text-slate-400">{t('waiter.zone')}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          <LanguageSwitcher compact />
           <button
             onClick={() => setShowNotifications(true)}
             className="relative p-2 rounded-full bg-[#132845] text-slate-300 hover:text-white transition-colors"
-            title="Notifications"
+            title={t('common.notifications')}
           >
             <Bell className={`w-6 h-6 ${hasTableCalls ? 'animate-bounce text-red-400' : ''}`} />
             {hasTableCalls ? (
@@ -582,7 +612,7 @@ const WaiterOrdersPage = () => {
           <button
             onClick={handleLogout}
             className="p-2 rounded-full bg-[#132845] text-slate-300 hover:text-red-400 transition-colors"
-            title="Logout"
+            title={t('common.logout')}
           >
             <LogOut className="w-6 h-6" />
           </button>
@@ -595,13 +625,13 @@ const WaiterOrdersPage = () => {
           onClick={() => setActiveTab('my-tables')}
           className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'my-tables' ? 'bg-[#0891b2] text-white shadow-lg' : 'bg-[#132845] text-slate-400'}`}
         >
-          My Tables
+          {t('waiter.myTables')}
         </button>
         <button
           onClick={() => setActiveTab('all-orders')}
           className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'all-orders' ? 'bg-[#0891b2] text-white shadow-lg' : 'bg-[#132845] text-slate-400'}`}
         >
-          All Orders
+          {t('waiter.allOrders')}
         </button>
       </div>
 
@@ -633,9 +663,9 @@ const WaiterOrdersPage = () => {
                   </div>
 
                   <div className="mt-4">
-                    <p className="text-sm font-medium text-slate-400 mb-1">Active Order</p>
+                    <p className="text-sm font-medium text-slate-400 mb-1">{t('waiter.activeOrder')}</p>
                     <p className="font-mono text-[#22d3ee] font-bold">{table.activeOrder}</p>
-                    <p className="text-xs text-slate-500 mt-1">{table.items} items â€¢ {table.total.toFixed(2)} TND</p>
+                    <p className="text-xs text-slate-500 mt-1">{t('waiter.itemsAndTotal', { count: table.items, total: table.total.toFixed(2) })}</p>
                   </div>
                 </div>
 
@@ -645,11 +675,11 @@ const WaiterOrdersPage = () => {
                     className="w-full py-3 bg-red-500 text-white font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2"
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    Call Received
+                    {t('waiter.callReceived')}
                   </button>
                 ) : (
                   <button className="w-full py-3 bg-[#0d1f3c] text-slate-400 font-bold text-sm hover:text-white transition-colors border-t border-[#1e3a5f] flex items-center justify-center gap-1">
-                    View Details
+                    {t('waiter.viewDetails')}
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 )}
@@ -658,8 +688,8 @@ const WaiterOrdersPage = () => {
 
             {tables.length === 0 && (
               <div className="col-span-full bg-[#132845] border border-[#1e3a5f] rounded-2xl p-8 text-center text-slate-400">
-                <p className="text-lg font-semibold">No assigned tables yet</p>
-                <p className="text-sm text-slate-500 mt-1">Assigned tables and orders will appear here in real time.</p>
+                <p className="text-lg font-semibold">{t('waiter.noAssignedTables')}</p>
+                <p className="text-sm text-slate-500 mt-1">{t('waiter.assignedTablesHint')}</p>
               </div>
             )}
           </div>
@@ -674,13 +704,13 @@ const WaiterOrdersPage = () => {
               <span className="shrink-0 p-2 rounded-full bg-[#132845] border border-[#1e3a5f] text-slate-400">
                 <Filter className="w-4 h-4" />
               </span>
-              {['all', 'new', 'in_progress', 'ready', 'served'].map((filter) => (
+              {filterOptions.map((filter) => (
                 <button
-                  key={filter}
-                  onClick={() => setOrderFilter(filter)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${orderFilter === filter ? 'bg-slate-200 text-[#0a1628]' : 'bg-[#132845] text-slate-400 border border-[#1e3a5f]'}`}
+                  key={filter.value}
+                  onClick={() => setOrderFilter(filter.value)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${orderFilter === filter.value ? 'bg-slate-200 text-[#0a1628]' : 'bg-[#132845] text-slate-400 border border-[#1e3a5f]'}`}
                 >
-                  {filter.replace('_', ' ')}
+                  {filter.label}
                 </button>
               ))}
             </div>
@@ -703,16 +733,16 @@ const WaiterOrdersPage = () => {
                       </div>
                       <div>
                         <h3 className="font-bold text-slate-100 font-mono">
-                          {getOrderDisplayNumber(order.orderNumber, order.id)}
+                          {getOrderDisplayNumber(order.orderNumber, order.id, t)}
                         </h3>
                         <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                          <Clock className="w-3 h-3" /> {order.time}
+                          <Clock className="w-3 h-3" /> {formatTimeAgo(order.createdAt, t)}
                         </p>
                       </div>
                     </div>
 
                     <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg ${getStatusColor(order.status)}`}>
-                      {order.status.replace('_', ' ')}
+                      {statusLabels[order.status] || order.status.replace('_', ' ')}
                     </span>
                   </div>
 
@@ -727,7 +757,7 @@ const WaiterOrdersPage = () => {
                       className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl transition-colors flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20"
                     >
                       <CheckCircle2 className="w-5 h-5" />
-                      Mark Served
+                      {t('waiter.markServed')}
                     </button>
                   )}
                   {order.status === 'new' && (
@@ -735,7 +765,7 @@ const WaiterOrdersPage = () => {
                       onClick={() => updateOrderStatus(order.id, 'in_progress')}
                       className="w-full py-3 bg-[#c9963a] text-[#0d1f3c] font-bold rounded-xl active:bg-amber-600 transition-colors flex justify-center items-center gap-2"
                     >
-                      <ChefHat className="w-5 h-5" /> Send to Kitchen
+                      <ChefHat className="w-5 h-5" /> {t('waiter.sendToKitchen')}
                     </button>
                   )}
                 </motion.div>
@@ -744,7 +774,7 @@ const WaiterOrdersPage = () => {
 
             {filteredOrders.length === 0 && (
               <div className="text-center py-12 text-slate-500">
-                <p className="font-medium text-lg">No orders found.</p>
+                <p className="font-medium text-lg">{t('waiter.noOrdersFound')}</p>
               </div>
             )}
           </div>
@@ -770,7 +800,7 @@ const WaiterOrdersPage = () => {
             >
               <div className="p-4 border-b border-[#1e3a5f] flex justify-between items-center bg-[#132845]">
                 <h2 className="text-lg font-bold flex items-center gap-2">
-                  <Bell className="w-5 h-5 text-[#22d3ee]" /> Notifications
+                  <Bell className="w-5 h-5 text-[#22d3ee]" /> {t('common.notifications')}
                 </h2>
                 <button
                   onClick={() => setShowNotifications(false)}
@@ -782,7 +812,7 @@ const WaiterOrdersPage = () => {
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {notifications.length === 0 ? (
-                  <p className="text-slate-500 text-center mt-6">No notifications</p>
+                  <p className="text-slate-500 text-center mt-6">{t('waiter.noNotifications')}</p>
                 ) : (
                   notifications.map((notification) => (
                     <div
@@ -814,7 +844,7 @@ const WaiterOrdersPage = () => {
                     onClick={handleMarkAllRead}
                     className="w-full py-3 bg-[#132845] text-slate-300 font-bold rounded-xl hover:bg-[#1e3a5f] transition-colors"
                   >
-                    Mark All as Read
+                    {t('waiter.markAllRead')}
                   </button>
                 </div>
               )}
