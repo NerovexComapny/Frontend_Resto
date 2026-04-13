@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import useAuthStore from './store/authStore';
 
 // Public Pages
@@ -48,7 +48,7 @@ const App = () => {
   const { token, user } = useAuthStore();
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Suspense fallback={<div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#7c6af7] border-t-transparent rounded-full animate-spin"></div></div>}>
         <Routes>
           {/* Public Routes */}
@@ -81,7 +81,7 @@ const App = () => {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
-    </BrowserRouter>
+    </HashRouter>
   );
 };
 

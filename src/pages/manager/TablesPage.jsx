@@ -28,12 +28,15 @@ const getTablesEndpoint = () => {
   return /\/api\/?$/.test(baseURL) ? '/tables' : '/api/tables';
 };
 
+const getRegenerateQRsEndpoint = () => `${getTablesEndpoint()}/regenerate-all-qr`;
+
 const TablesPage = () => {
   const { t } = useTranslation();
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isRegeneratingQrs, setIsRegeneratingQrs] = useState(false);
   const [editingTableId, setEditingTableId] = useState('');
   const [selectedQrTable, setSelectedQrTable] = useState(null);
   const [newTable, setNewTable] = useState({ number: '', capacity: '4' });
@@ -210,6 +213,23 @@ const TablesPage = () => {
     link.click();
   };
 
+  const handleRegenerateAllQrs = async () => {
+    if (isRegeneratingQrs) return;
+
+    setIsRegeneratingQrs(true);
+    try {
+      await api.put(getRegenerateQRsEndpoint());
+      const response = await api.get(getTablesEndpoint());
+      const apiTables = Array.isArray(response?.data?.tables) ? response.data.tables : [];
+      setTables(apiTables);
+      toast.success(t('manager.tables.qrRegeneratedAll', { count: apiTables.length }));
+    } catch (error) {
+      toast.error(getRequestError(error));
+    } finally {
+      setIsRegeneratingQrs(false);
+    }
+  };
+
   return (
     <ManagerLayout>
       <div className="space-y-6">
@@ -227,13 +247,24 @@ const TablesPage = () => {
             </p>
           </div>
           
-          <button 
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center justify-center space-x-2 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] px-4 py-2.5 rounded-xl font-semibold transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            <span>{t('manager.tables.addTable')}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRegenerateAllQrs}
+              disabled={isRegeneratingQrs}
+              className="flex items-center justify-center space-x-2 bg-[#132845] hover:bg-[#1e3a5f] disabled:opacity-60 disabled:cursor-not-allowed text-slate-200 px-4 py-2.5 rounded-xl font-semibold transition-colors border border-[#1e3a5f]"
+            >
+              <QrCode className="w-5 h-5" />
+              <span>{isRegeneratingQrs ? t('manager.tables.regeneratingQr') : t('manager.tables.regenerateAllQr')}</span>
+            </button>
+
+            <button 
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center justify-center space-x-2 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] px-4 py-2.5 rounded-xl font-semibold transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              <span>{t('manager.tables.addTable')}</span>
+            </button>
+          </div>
         </div>
 
         {/* Floor Plan Grid */}
