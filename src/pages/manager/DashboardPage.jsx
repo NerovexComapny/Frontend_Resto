@@ -137,59 +137,65 @@ const DashboardPage = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        const [dashboardResponse, ordersResponse, tablesResponse] = await Promise.all([
-          api.get(getApiEndpoint('dashboard/stats')).catch(() => null),
+        const [ordersResponse, tablesResponse] = await Promise.all([
           api.get(getApiEndpoint('orders')),
           api.get(getApiEndpoint('tables')),
         ]);
 
         if (!isActive) return;
 
-        const dashboardData = dashboardResponse?.data || {};
+        const apiOrders = Array.isArray(ordersResponse?.data?.orders) ? ordersResponse.data.orders : [];
         const apiTables = Array.isArray(tablesResponse?.data?.tables) ? tablesResponse.data.tables : [];
-        setDashboardStats({
-          totalOrdersToday: Number(dashboardData.totalOrdersToday || 0),
-          totalRevenueToday: Number(dashboardData.totalRevenueToday || 0),
-          occupiedTables: Number(dashboardData.occupiedTables || 0),
-          pendingOrders: Number(dashboardData.pendingOrders || 0),
-          totalTables: apiTables.length,
-          availableTables: apiTables.filter((table) => table?.status === 'available').length,
+
+        const today = new Date();
+        const todayOrders = apiOrders.filter((order) => {
+          const createdAt = order?.createdAt ? new Date(order.createdAt) : null;
+          return createdAt && !Number.isNaN(createdAt.getTime()) && isSameDay(createdAt, today);
         });
 
-        const apiOrders = Array.isArray(ordersResponse?.data?.orders) ? ordersResponse.data.orders : [];
+        const totalRevenueToday = todayOrders
+          .filter((order) => normalizeStatus(order?.status) !== 'cancelled')
+          .reduce((sum, order) => sum + Number(order?.totalAmount || 0), 0);
+
+        const pendingOrders = apiOrders.filter((order) => normalizeStatus(order?.status) === 'pending').length;
+
+        const activeStatuses = new Set(['pending', 'confirmed', 'preparing', 'ready']);
+        const occupiedTableIds = new Set(
+          apiTables
+            .filter((table) => String(table?.status || '').toLowerCase() === 'occupied')
+            .map((table) => String(table?._id || ''))
+            .filter(Boolean)
+        );
+
+        for (const order of apiOrders) {
+          if (!activeStatuses.has(normalizeStatus(order?.status))) continue;
+
+          const tableRef = order?.table;
+          if (tableRef && typeof tableRef === 'object' && tableRef._id) {
+            occupiedTableIds.add(String(tableRef._id));
+          } else if (tableRef) {
+            occupiedTableIds.add(String(tableRef));
+          }
+        }
+
+        const occupiedTables = occupiedTableIds.size;
+        const totalTables = apiTables.length;
+        const availableTables = Math.max(totalTables - occupiedTables, 0);
+
+        setDashboardStats({
+          totalOrdersToday: todayOrders.length,
+          totalRevenueToday: Number(totalRevenueToday.toFixed(2)),
+          occupiedTables,
+          pendingOrders,
+          totalTables,
+          availableTables,
+        });
+
         const tableNumbersById = new Map(
           apiTables
             .filter((table) => table?._id)
             .map((table) => [String(table._id), table.number])
         );
-
-        if (!dashboardResponse?.data?.success) {
-          const today = new Date();
-          const totalOrdersToday = apiOrders.filter((order) => {
-            const createdAt = order?.createdAt ? new Date(order.createdAt) : null;
-            return createdAt && !Number.isNaN(createdAt.getTime()) && isSameDay(createdAt, today);
-          }).length;
-
-          const totalRevenueToday = apiOrders
-            .filter((order) => {
-              const createdAt = order?.createdAt ? new Date(order.createdAt) : null;
-              const status = normalizeStatus(order?.status);
-              return createdAt && !Number.isNaN(createdAt.getTime()) && isSameDay(createdAt, today) && status !== 'cancelled';
-            })
-            .reduce((sum, order) => sum + Number(order?.totalAmount || 0), 0);
-
-          const pendingOrders = apiOrders.filter((order) => normalizeStatus(order?.status) === 'pending').length;
-          const occupiedTables = apiTables.filter((table) => table?.status === 'occupied').length;
-
-          setDashboardStats({
-            totalOrdersToday,
-            totalRevenueToday: Number(totalRevenueToday.toFixed(2)),
-            occupiedTables,
-            pendingOrders,
-            totalTables: apiTables.length,
-            availableTables: apiTables.filter((table) => table?.status === 'available').length,
-          });
-        }
 
         const mappedOrders = apiOrders.slice(0, 5).map((order) => ({
           id: formatOrderId(order.orderNumber, order._id),
