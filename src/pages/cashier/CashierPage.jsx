@@ -37,6 +37,21 @@ const isUnpaidActiveOrder = (order) => {
   return order?.paymentStatus === 'unpaid' && order?.status !== 'cancelled';
 };
 
+const buildPaymentStatusByOrderId = (payments) => {
+  const byOrderId = new Map();
+
+  for (const payment of payments) {
+    const orderId = toId(payment?.order);
+    if (!orderId) continue;
+
+    if (!byOrderId.has(orderId)) {
+      byOrderId.set(orderId, payment?.status || 'pending');
+    }
+  }
+
+  return byOrderId;
+};
+
 const normalizeOrder = (order) => {
   const tableNumber = order?.table && typeof order.table === 'object'
     ? order.table.number
@@ -67,6 +82,7 @@ const normalizeOrder = (order) => {
 
 const CashierPage = () => {
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash'); // 'cash' or 'card'
@@ -89,31 +105,70 @@ const CashierPage = () => {
   useEffect(() => {
     let isActive = true;
 
-    const fetchOrders = async () => {
+    const fetchOrdersAndPayments = async () => {
+      setLoading(true);
       try {
-        const response = await api.get(ordersEndpoint);
+        const [ordersResponse, paymentsResponse] = await Promise.all([
+          api.get(`${ordersEndpoint}?status=ready`),
+          api.get(paymentsEndpoint),
+        ]);
+
         if (!isActive) return;
 
-        const apiOrders = Array.isArray(response?.data?.orders) ? response.data.orders : [];
-        setOrders(apiOrders.filter(isUnpaidActiveOrder).map(normalizeOrder));
+        const apiOrders = Array.isArray(ordersResponse?.data?.orders)
+          ? ordersResponse.data.orders
+          : [];
+        const apiPayments = Array.isArray(paymentsResponse?.data?.payments)
+          ? paymentsResponse.data.payments
+          : [];
+
+        const paymentStatusByOrderId = buildPaymentStatusByOrderId(apiPayments);
+
+        const readyUnpaidOrders = apiOrders
+          .filter((order) => {
+            const orderId = toId(order?._id);
+            const paymentStatusFromOrder = String(order?.paymentStatus || '').toLowerCase();
+            const paymentStatusFromPayments = String(paymentStatusByOrderId.get(orderId) || '').toLowerCase();
+
+            if (paymentStatusFromOrder === 'paid') return false;
+            if (paymentStatusFromPayments === 'completed') return false;
+
+            return isUnpaidActiveOrder(order);
+          })
+          .map(normalizeOrder);
+
+        setOrders(readyUnpaidOrders);
       } catch {
         if (isActive) {
           setOrders([]);
         }
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchOrders();
+    fetchOrdersAndPayments();
 
     const socket = connectSocket();
     if (restaurantId) {
       socket.emit('joinRestaurant', restaurantId);
     }
 
-    const handleNewOrder = (data) => {
-      if (!data?.order || !isUnpaidActiveOrder(data.order)) return;
+    const handleOrderStatusUpdated = (data) => {
+      const incomingOrder = data?.order;
+      if (!incomingOrder?._id) return;
 
-      const incoming = normalizeOrder(data.order);
+      const incomingId = toId(incomingOrder._id);
+
+      if (incomingOrder.status !== 'ready' || incomingOrder.paymentStatus === 'paid') {
+        setOrders((prev) => prev.filter((order) => order._id !== incomingId));
+        setSelectedOrder((prev) => (prev?._id === incomingId ? null : prev));
+        return;
+      }
+
+      const incoming = normalizeOrder(incomingOrder);
       setOrders((prev) => [incoming, ...prev.filter((order) => order._id !== incoming._id)]);
     };
 
@@ -125,15 +180,15 @@ const CashierPage = () => {
       setSelectedOrder((prev) => (prev?._id === paidOrderId ? null : prev));
     };
 
-    socket.on('newOrder', handleNewOrder);
+    socket.on('orderStatusUpdated', handleOrderStatusUpdated);
     socket.on('paymentCompleted', handlePaymentCompleted);
 
     return () => {
       isActive = false;
-      socket.off('newOrder', handleNewOrder);
+      socket.off('orderStatusUpdated', handleOrderStatusUpdated);
       socket.off('paymentCompleted', handlePaymentCompleted);
     };
-  }, [ordersEndpoint, restaurantId]);
+  }, [ordersEndpoint, paymentsEndpoint, restaurantId]);
 
   useEffect(() => {
     if (!selectedOrder) return;
@@ -271,8 +326,18 @@ const CashierPage = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar">
-            <AnimatePresence>
-              {filteredOrders.map(order => {
+            {loading ? (
+              <div className="h-full flex flex-col items-center justify-center text-slate-500">
+                <Motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                  className="w-10 h-10 border-4 border-[#7c6af7]/30 border-t-[#7c6af7] rounded-full mb-4"
+                />
+                <p className="text-base font-semibold uppercase tracking-widest">Loading Ready Orders...</p>
+              </div>
+            ) : (
+              <AnimatePresence>
+                {filteredOrders.map(order => {
                 const isSelected = selectedOrder?._id === order._id;
                 const itemsSummary = order.items.map(i => i.name).join(', ');
 
@@ -309,13 +374,14 @@ const CashierPage = () => {
                     </div>
                   </Motion.div>
                 );
-              })}
-            </AnimatePresence>
+                })}
+              </AnimatePresence>
+            )}
 
-            {filteredOrders.length === 0 && (
+            {!loading && filteredOrders.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-50 mt-20">
                 <Receipt className="w-16 h-16 mb-4" />
-                <p className="text-xl font-bold uppercase tracking-widest">No unpaid orders</p>
+                <p className="text-xl font-bold uppercase tracking-widest">No ready unpaid orders</p>
               </div>
             )}
           </div>

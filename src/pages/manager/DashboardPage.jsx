@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import LayoutGrid from 'lucide-react/dist/esm/icons/layout-grid';
 import TrendingUp from 'lucide-react/dist/esm/icons/trending-up';
 import Clock from 'lucide-react/dist/esm/icons/clock';
@@ -9,16 +9,6 @@ import ManagerLayout from '../../layouts/ManagerLayout';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
-
-const mockRevenueData = [
-  { name: 'Mon', revenue: 400 },
-  { name: 'Tue', revenue: 300 },
-  { name: 'Wed', revenue: 550 },
-  { name: 'Thu', revenue: 480 },
-  { name: 'Fri', revenue: 800 },
-  { name: 'Sat', revenue: 1100 },
-  { name: 'Sun', revenue: 950 },
-];
 
 const normalizeStatus = (status) => {
   const normalized = String(status || 'pending').toLowerCase();
@@ -38,6 +28,45 @@ const formatTable = (tableValue) => {
   if (tableNumber === undefined || tableNumber === null || tableNumber === '') return 'N/A';
   const value = String(tableNumber);
   return value.startsWith('T-') ? value : `T-${value}`;
+};
+
+const buildRevenueData = (orders) => {
+  const shortDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const today = new Date();
+  const byDay = [];
+
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const dayDate = new Date(today);
+    dayDate.setDate(today.getDate() - offset);
+
+    const key = dayDate.toISOString().slice(0, 10);
+    byDay.push({
+      key,
+      name: shortDays[dayDate.getDay()],
+      revenue: 0,
+    });
+  }
+
+  const dayMap = new Map(byDay.map((row) => [row.key, row]));
+
+  for (const order of orders) {
+    const createdAt = order?.createdAt ? new Date(order.createdAt) : null;
+    if (!createdAt || Number.isNaN(createdAt.getTime())) continue;
+
+    const key = createdAt.toISOString().slice(0, 10);
+    const row = dayMap.get(key);
+    if (!row) continue;
+
+    const status = normalizeStatus(order?.status);
+    if (status === 'cancelled') continue;
+
+    row.revenue += Number(order?.totalAmount || 0);
+  }
+
+  return byDay.map(({ name, revenue }) => ({
+    name,
+    revenue: Number(revenue.toFixed(2)),
+  }));
 };
 
 const getStatusBadge = (status) => {
@@ -64,6 +93,7 @@ const DashboardPage = () => {
     pendingOrders: 0,
   });
   const [recentOrders, setRecentOrders] = useState([]);
+  const [revenueData, setRevenueData] = useState([]);
   const [loading, setLoading] = useState(true);
   const user = useAuthStore((state) => state.user);
 
@@ -73,13 +103,9 @@ const DashboardPage = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        const hasApiSuffix = /\/api\/?$/.test(String(api.defaults.baseURL || ''));
-        const dashboardPath = hasApiSuffix ? '/reports/dashboard' : '/api/reports/dashboard';
-        const recentOrdersPath = hasApiSuffix ? '/orders?limit=5' : '/api/orders?limit=5';
-
         const [dashboardResponse, ordersResponse] = await Promise.all([
-          api.get(dashboardPath),
-          api.get(recentOrdersPath),
+          api.get('/dashboard/stats'),
+          api.get('/orders'),
         ]);
 
         if (!isActive) return;
@@ -101,6 +127,7 @@ const DashboardPage = () => {
         }));
 
         setRecentOrders(mappedOrders);
+        setRevenueData(buildRevenueData(apiOrders));
       } catch (error) {
         if (isActive) {
           toast.error(error.message);
@@ -162,7 +189,7 @@ const DashboardPage = () => {
         </div>
 
         {/* Stats Grid */}
-        <motion.div 
+        <Motion.div 
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
           variants={containerVariants}
           initial="hidden"
@@ -171,7 +198,7 @@ const DashboardPage = () => {
           {stats.map((stat, index) => {
             const Icon = stat.icon;
             return (
-              <motion.div 
+              <Motion.div 
                 key={index}
                 variants={itemVariants}
                 className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-6 flex flex-col shadow-sm"
@@ -186,15 +213,15 @@ const DashboardPage = () => {
                   <h3 className="text-2xl font-bold text-slate-100">{stat.value}</h3>
                   <p className="text-xs text-slate-500 mt-2">{stat.trend}</p>
                 </div>
-              </motion.div>
+              </Motion.div>
             );
           })}
-        </motion.div>
+        </Motion.div>
 
         {/* Bottom Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Orders - 2 Columns wide on LG */}
-          <motion.div 
+          <Motion.div 
             className="lg:col-span-2 bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -224,13 +251,18 @@ const DashboardPage = () => {
                       <td className="py-4 text-right">{getStatusBadge(order.status)}</td>
                     </tr>
                   ))}
+                  {recentOrders.length === 0 && (
+                    <tr>
+                      <td colSpan="4" className="py-8 text-center text-slate-400">No orders found.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
-          </motion.div>
+          </Motion.div>
 
           {/* Revenue Chart - 1 Column wide on LG */}
-          <motion.div 
+          <Motion.div 
             className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -239,7 +271,7 @@ const DashboardPage = () => {
             <h3 className="text-xl font-bold text-slate-100 mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>Revenue (7 Days)</h3>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockRevenueData}>
+                <BarChart data={revenueData}>
                   <XAxis 
                     dataKey="name" 
                     axisLine={false} 
@@ -260,7 +292,7 @@ const DashboardPage = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </motion.div>
+          </Motion.div>
         </div>
       </div>
     </ManagerLayout>

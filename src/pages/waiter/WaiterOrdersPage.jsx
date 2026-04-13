@@ -70,14 +70,29 @@ const toApiOrderStatus = (uiStatus) => {
   return uiStatus;
 };
 
+const getOrderDisplayNumber = (orderNumber, fallbackId) => {
+  const normalized = String(orderNumber || '').trim();
+  if (normalized) return normalized;
+
+  const fallback = String(fallbackId || '').trim();
+  if (!fallback) return 'Order #-';
+
+  return `Order #${fallback.slice(-4)}`;
+};
+
 const normalizeOrder = (order) => {
   const tableNumber = order?.table && typeof order.table === 'object'
     ? order.table.number
     : order?.table;
 
+  const normalizedOrderNumber = String(order?.orderNumber || '').trim();
+  const normalizedId = toId(order?._id)
+    || normalizedOrderNumber
+    || `${toId(order?.table)}-${order?.createdAt || ''}`;
+
   return {
-    id: toId(order?._id) || order?.orderNumber,
-    orderNumber: order?.orderNumber || 'ORD-UNKNOWN',
+    id: normalizedId,
+    orderNumber: normalizedOrderNumber,
     table: tableNumber ?? '-',
     tableId: toId(order?.table),
     waiterId: toId(order?.waiter),
@@ -98,6 +113,16 @@ const normalizeOrder = (order) => {
     time: formatTimeAgo(order?.createdAt),
     createdAt: order?.createdAt,
   };
+};
+
+const formatOrderDetails = (orderItems) => {
+  if (!Array.isArray(orderItems) || orderItems.length === 0) {
+    return 'No item details';
+  }
+
+  return orderItems
+    .map((item) => `${Number(item?.qty || 1)}x ${item?.name || 'Item'}`)
+    .join(', ');
 };
 
 const buildWaiterTables = (apiTables, waiterTableIds, orders, previousNeedsHelpById = {}) => {
@@ -130,7 +155,9 @@ const buildWaiterTables = (apiTables, waiterTableIds, orders, previousNeedsHelpB
         id: tableId,
         number: tableNumber,
         status: tableStatus,
-        activeOrder: activeOrder?.orderNumber || '-',
+        activeOrder: activeOrder
+          ? getOrderDisplayNumber(activeOrder.orderNumber, activeOrder.id)
+          : '-',
         items: activeOrder
           ? activeOrder.items.reduce((sum, item) => sum + Number(item.qty || 0), 0)
           : 0,
@@ -147,6 +174,7 @@ const WaiterOrdersPage = () => {
   const [notifications, setNotifications] = useState([]);
   const [orders, setOrders] = useState([]);
   const [tables, setTables] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [orderFilter, setOrderFilter] = useState('all');
 
   const navigate = useNavigate();
@@ -170,6 +198,14 @@ const WaiterOrdersPage = () => {
 
   const waiterId = useMemo(() => toId(userContext?._id || userContext?.id), [userContext]);
   const restaurantId = useMemo(() => toId(userContext?.restaurant), [userContext]);
+
+  const belongsToCurrentWaiter = useCallback(
+    (order) => {
+      if (!waiterId) return true;
+      return toId(order?.waiter) === waiterId;
+    },
+    [waiterId]
+  );
 
   const syncTablesFromOrders = useCallback((nextOrders) => {
     setTables((previousTables) => {
@@ -253,6 +289,7 @@ const WaiterOrdersPage = () => {
     let isActive = true;
 
     const fetchData = async () => {
+      setLoading(true);
       try {
         const [ordersResponse, tablesResponse] = await Promise.all([
           api.get(ordersEndpoint),
@@ -268,25 +305,17 @@ const WaiterOrdersPage = () => {
           ? tablesResponse.data.tables
           : [];
 
-        const activeOrders = apiOrders
+        const waiterOrders = apiOrders.filter((order) => belongsToCurrentWaiter(order));
+
+        const activeOrders = waiterOrders
           .filter((order) => ACTIVE_API_STATUSES.has(order?.status))
           .map(normalizeOrder);
 
         const assignedTableIds = new Set(
-          apiOrders
-            .filter((order) => !waiterId || toId(order?.waiter) === waiterId)
+          waiterOrders
             .map((order) => toId(order?.table))
             .filter(Boolean)
         );
-
-        // Fallback when explicit waiter assignment is unavailable.
-        if (assignedTableIds.size === 0) {
-          activeOrders.forEach((order) => {
-            if (order.tableId) {
-              assignedTableIds.add(order.tableId);
-            }
-          });
-        }
 
         cachedTablesRef.current = apiTables;
         waiterTableIdsRef.current = assignedTableIds;
@@ -296,6 +325,10 @@ const WaiterOrdersPage = () => {
       } catch (error) {
         if (isActive) {
           toast.error(error.response?.data?.message || error.message);
+        }
+      } finally {
+        if (isActive) {
+          setLoading(false);
         }
       }
     };
@@ -311,10 +344,19 @@ const WaiterOrdersPage = () => {
       const incomingOrder = data.order;
       const incomingId = toId(incomingOrder._id);
       const normalizedOrder = normalizeOrder(incomingOrder);
+      const belongsToWaiter = belongsToCurrentWaiter(incomingOrder);
 
       setOrders((previousOrders) => {
         const exists = previousOrders.some((order) => order.id === incomingId);
         let nextOrders = previousOrders;
+
+        if (!belongsToWaiter) {
+          nextOrders = exists
+            ? previousOrders.filter((order) => order.id !== incomingId)
+            : previousOrders;
+          syncTablesFromOrders(nextOrders);
+          return nextOrders;
+        }
 
         if (ACTIVE_API_STATUSES.has(incomingOrder.status)) {
           nextOrders = exists
@@ -331,13 +373,33 @@ const WaiterOrdersPage = () => {
         syncTablesFromOrders(nextOrders);
         return nextOrders;
       });
+    };
 
-      if (normalizedOrder.status === 'ready') {
-        addNotification({
-          type: 'ready',
-          message: `Order ${normalizedOrder.orderNumber} is ready to serve`,
-        });
+    const handleOrderReady = (data) => {
+      if (!data?.order?._id) return;
+
+      const incomingOrder = data.order;
+      if (!belongsToCurrentWaiter(incomingOrder)) {
+        return;
       }
+
+      const normalizedOrder = normalizeOrder(incomingOrder);
+
+      setOrders((previousOrders) => {
+        const exists = previousOrders.some((order) => order.id === normalizedOrder.id);
+
+        const nextOrders = exists
+          ? previousOrders.map((order) => (order.id === normalizedOrder.id ? normalizedOrder : order))
+          : [normalizedOrder, ...previousOrders];
+
+        syncTablesFromOrders(nextOrders);
+        return nextOrders;
+      });
+
+      addNotification({
+        type: 'ready',
+        message: `Table ${normalizedOrder.table} ready: ${getOrderDisplayNumber(normalizedOrder.orderNumber, normalizedOrder.id)} (${formatOrderDetails(normalizedOrder.items)})`,
+      });
     };
 
     const handleNewOrder = (data) => {
@@ -348,12 +410,12 @@ const WaiterOrdersPage = () => {
         return;
       }
 
+      if (!belongsToCurrentWaiter(incomingOrder)) {
+        return;
+      }
+
       const normalizedOrder = normalizeOrder(incomingOrder);
-      const incomingWaiterId = toId(incomingOrder.waiter);
-      if (
-        normalizedOrder.tableId
-        && (!waiterId || !incomingWaiterId || incomingWaiterId === waiterId)
-      ) {
+      if (normalizedOrder.tableId) {
         waiterTableIdsRef.current.add(normalizedOrder.tableId);
       }
 
@@ -374,14 +436,20 @@ const WaiterOrdersPage = () => {
     };
 
     socket.on('orderStatusUpdated', handleOrderStatusUpdated);
+    socket.on('order_updated', handleOrderStatusUpdated);
     socket.on('newOrder', handleNewOrder);
+    socket.on('new_order', handleNewOrder);
+    socket.on('order_ready', handleOrderReady);
 
     return () => {
       isActive = false;
       socket.off('orderStatusUpdated', handleOrderStatusUpdated);
+      socket.off('order_updated', handleOrderStatusUpdated);
       socket.off('newOrder', handleNewOrder);
+      socket.off('new_order', handleNewOrder);
+      socket.off('order_ready', handleOrderReady);
     };
-  }, [addNotification, ordersEndpoint, restaurantId, syncTablesFromOrders, tablesEndpoint, waiterId]);
+  }, [addNotification, belongsToCurrentWaiter, ordersEndpoint, restaurantId, syncTablesFromOrders, tablesEndpoint]);
 
   const filteredOrders = useMemo(() => {
     const baseOrders = orderFilter === 'all'
@@ -540,8 +608,14 @@ const WaiterOrdersPage = () => {
       {/* MAIN CONTENT */}
       <main className="flex-1 overflow-y-auto p-4 pb-24">
 
+        {loading && (
+          <div className="min-h-[50vh] flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-[#22d3ee] border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
+
         {/* TAB: MY TABLES */}
-        {activeTab === 'my-tables' && (
+        {!loading && activeTab === 'my-tables' && (
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             {tables.map((table) => (
               <div
@@ -581,11 +655,18 @@ const WaiterOrdersPage = () => {
                 )}
               </div>
             ))}
+
+            {tables.length === 0 && (
+              <div className="col-span-full bg-[#132845] border border-[#1e3a5f] rounded-2xl p-8 text-center text-slate-400">
+                <p className="text-lg font-semibold">No assigned tables yet</p>
+                <p className="text-sm text-slate-500 mt-1">Assigned tables and orders will appear here in real time.</p>
+              </div>
+            )}
           </div>
         )}
 
         {/* TAB: ALL ORDERS */}
-        {activeTab === 'all-orders' && (
+        {!loading && activeTab === 'all-orders' && (
           <div className="grid grid-cols-2 gap-4">
 
             {/* Filter */}
@@ -621,7 +702,9 @@ const WaiterOrdersPage = () => {
                         {order.table}
                       </div>
                       <div>
-                        <h3 className="font-bold text-slate-100 font-mono">{order.id}</h3>
+                        <h3 className="font-bold text-slate-100 font-mono">
+                          {getOrderDisplayNumber(order.orderNumber, order.id)}
+                        </h3>
                         <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                           <Clock className="w-3 h-3" /> {order.time}
                         </p>

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, memo } from 'react';
+﻿import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import Clock from 'lucide-react/dist/esm/icons/clock';
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
 import ChefHat from 'lucide-react/dist/esm/icons/chef-hat';
@@ -89,8 +89,9 @@ setInterval(() => {
   tickListeners.forEach(fn => fn(globalTick));
 }, 1000);
 
-const OrderTicket = memo(({ order, onAction }) => {
+const OrderTicket = memo(({ order, onAction, isUpdating }) => {
   const [, forceUpdate] = useState(0);
+  const actionOrderId = order._id || order.id;
 
   useEffect(() => {
     const handler = (tick) => forceUpdate(tick);
@@ -147,28 +148,46 @@ const OrderTicket = memo(({ order, onAction }) => {
       <div className="mt-2 z-10">
         {order.status === 'new' && (
           <button
-            onClick={() => onAction(order._id, 'in_progress')}
-            className="w-full py-5 text-2xl font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+            onClick={() => onAction(actionOrderId, 'in_progress')}
+            disabled={isUpdating}
+            className={
+              "w-full py-5 text-2xl font-bold text-white rounded-xl transition-all flex items-center justify-center gap-3 "
+              + (isUpdating
+                ? "bg-blue-600/70 cursor-not-allowed opacity-80"
+                : "bg-blue-600 hover:bg-blue-500 active:scale-[0.98]")
+            }
           >
             <ChefHat className="w-6 h-6" />
-            <span>Start Cooking</span>
+            <span>{isUpdating ? 'Starting...' : 'Start Cooking'}</span>
           </button>
         )}
         {order.status === 'in_progress' && (
           <button
-            onClick={() => onAction(order._id, 'ready')}
-            className="w-full py-5 text-2xl font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+            onClick={() => onAction(actionOrderId, 'ready')}
+            disabled={isUpdating}
+            className={
+              "w-full py-5 text-2xl font-bold text-white rounded-xl transition-all flex items-center justify-center gap-3 "
+              + (isUpdating
+                ? "bg-emerald-600/70 cursor-not-allowed opacity-80"
+                : "bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98]")
+            }
           >
             <CheckCircle2 className="w-6 h-6" />
-            <span>Mark Ready</span>
+            <span>{isUpdating ? 'Updating...' : 'Mark Ready'}</span>
           </button>
         )}
         {order.status === 'ready' && (
           <button
-            onClick={() => onAction(order._id, 'served')}
-            className="w-full py-4 text-xl font-bold text-slate-400 bg-[#1e3a5f] hover:bg-[#1e4a75] rounded-xl border border-[#1e4a75] active:scale-[0.98] transition-all"
+            onClick={() => onAction(actionOrderId, 'served')}
+            disabled={isUpdating}
+            className={
+              "w-full py-4 text-xl font-bold rounded-xl border transition-all "
+              + (isUpdating
+                ? "text-slate-400 bg-[#1e3a5f]/70 border-[#1e4a75] cursor-not-allowed opacity-80"
+                : "text-slate-400 bg-[#1e3a5f] hover:bg-[#1e4a75] border-[#1e4a75] active:scale-[0.98]")
+            }
           >
-            Clear Ticket
+            {isUpdating ? 'Clearing...' : 'Clear Ticket'}
           </button>
         )}
       </div>
@@ -178,8 +197,16 @@ const OrderTicket = memo(({ order, onAction }) => {
 
 const KitchenDisplayPage = () => {
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pendingActions, setPendingActions] = useState({});
   const user = useAuthStore((state) => state.user);
   const ordersEndpoint = getOrdersEndpoint();
+  const ordersRef = useRef([]);
+  const inFlightActionsRef = useRef(new Set());
+
+  useEffect(() => {
+    ordersRef.current = orders;
+  }, [orders]);
 
   useEffect(() => {
     if (!user?.restaurant) return;
@@ -187,6 +214,7 @@ const KitchenDisplayPage = () => {
     let isActive = true;
 
     const fetchKitchenOrders = async () => {
+      setLoading(true);
       try {
         const statuses = ['pending', 'confirmed', 'preparing', 'ready'];
         const responses = await Promise.all(
@@ -210,6 +238,10 @@ const KitchenDisplayPage = () => {
       } catch {
         if (isActive) {
           setOrders([]);
+        }
+      } finally {
+        if (isActive) {
+          setLoading(false);
         }
       }
     };
@@ -238,16 +270,33 @@ const KitchenDisplayPage = () => {
     };
 
     socket.on('newOrder', handleNewOrder);
+    socket.on('new_order', handleNewOrder);
     socket.on('orderStatusUpdated', handleOrderStatusUpdated);
+    socket.on('order_updated', handleOrderStatusUpdated);
+    socket.on('order_ready', handleOrderStatusUpdated);
 
     return () => {
       isActive = false;
       socket.off('newOrder', handleNewOrder);
+      socket.off('new_order', handleNewOrder);
       socket.off('orderStatusUpdated', handleOrderStatusUpdated);
+      socket.off('order_updated', handleOrderStatusUpdated);
+      socket.off('order_ready', handleOrderStatusUpdated);
     };
   }, [ordersEndpoint, user?.restaurant]);
 
   const handleAction = useCallback(async (orderId, newStatus) => {
+    if (!orderId) return;
+    if (inFlightActionsRef.current.has(orderId)) return;
+
+    const currentOrder = ordersRef.current.find((order) => (order._id || order.id) === orderId);
+    if (!currentOrder) return;
+    if (newStatus === 'in_progress' && currentOrder.status === 'in_progress') return;
+    if (currentOrder.status === newStatus) return;
+
+    inFlightActionsRef.current.add(orderId);
+    setPendingActions((prev) => ({ ...prev, [orderId]: true }));
+
     try {
       const apiStatus = toApiStatus(newStatus);
       await api.put(`${ordersEndpoint}/${orderId}/status`, { status: apiStatus });
@@ -263,6 +312,13 @@ const KitchenDisplayPage = () => {
       }
     } catch {
       // Keep UI unchanged and rely on next socket update/refetch if request fails.
+    } finally {
+      inFlightActionsRef.current.delete(orderId);
+      setPendingActions((prev) => {
+        const next = { ...prev };
+        delete next[orderId];
+        return next;
+      });
     }
   }, [ordersEndpoint]);
 
@@ -293,7 +349,13 @@ const KitchenDisplayPage = () => {
       </header>
 
       <main className="flex-1 min-h-0 grid grid-cols-3 gap-0">
-        {columnData.map(col => (
+        {loading && (
+          <div className="col-span-3 min-h-[60vh] flex items-center justify-center">
+            <div className="w-10 h-10 border-2 border-[#c9963a] border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
+
+        {!loading && columnData.map(col => (
           <section key={col.key} className={"flex flex-col min-h-0 bg-[#0a1628] " + col.borderClass}>
             <div className={"p-4 border-b-4 flex justify-between items-center shrink-0 " + col.headerClass}>
               <h2 className="text-2xl font-black tracking-widest uppercase">{col.label}</h2>
@@ -303,9 +365,17 @@ const KitchenDisplayPage = () => {
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-5"
               style={{ scrollbarWidth: 'thin', scrollbarColor: '#1e3a5f transparent' }}>
-              {col.orders.map(order => (
-                <OrderTicket key={order._id} order={order} onAction={handleAction} />
-              ))}
+              {col.orders.map(order => {
+                const orderId = order._id || order.id;
+                return (
+                  <OrderTicket
+                    key={orderId}
+                    order={order}
+                    onAction={handleAction}
+                    isUpdating={Boolean(pendingActions[orderId])}
+                  />
+                );
+              })}
               {col.count === 0 && (
                 <div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-50 pt-20">
                   {col.emptyIcon}

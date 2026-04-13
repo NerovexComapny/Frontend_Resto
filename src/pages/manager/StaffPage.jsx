@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Search from 'lucide-react/dist/esm/icons/search';
 import Filter from 'lucide-react/dist/esm/icons/filter';
@@ -11,16 +11,12 @@ import Phone from 'lucide-react/dist/esm/icons/phone';
 import Mail from 'lucide-react/dist/esm/icons/mail';
 import User from 'lucide-react/dist/esm/icons/user';
 import ManagerLayout from '../../layouts/ManagerLayout';
-
-const INITIAL_STAFF = [
-  { _id: "1", name: "John Waiter", email: "waiter@test.com", role: "waiter", phone: "+21612345678", isActive: true },
-  { _id: "2", name: "Sara Cashier", email: "cashier@test.com", role: "cashier", phone: "+21687654321", isActive: true },
-  { _id: "3", name: "Ali Cook", email: "cook@test.com", role: "cook", phone: "+21698765432", isActive: false },
-  { _id: "4", name: "Jane Manager", email: "manager@test.com", role: "manager", phone: "+21645678901", isActive: true }
-];
+import { toast } from 'react-hot-toast';
+import api from '../../services/api';
 
 const getInitials = (name) => {
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+  if (!name) return 'NA';
+  return name.split(' ').map((n) => n[0]).join('').toUpperCase().substring(0, 2);
 };
 
 const getRoleStyle = (role) => {
@@ -34,7 +30,8 @@ const getRoleStyle = (role) => {
 };
 
 const StaffPage = () => {
-  const [staff, setStaff] = useState(INITIAL_STAFF);
+  const [staff, setStaff] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   
@@ -62,16 +59,59 @@ const StaffPage = () => {
     setTimeout(() => setEditingStaff(null), 200);
   };
 
-  const toggleStatus = (id) => {
-    setStaff(prev => prev.map(s => s._id === id ? { ...s, isActive: !s.isActive } : s));
-  };
+  useEffect(() => {
+    let isActive = true;
+
+    const fetchStaff = async () => {
+      setLoading(true);
+      try {
+        const response = await api.get('/staff');
+        const list = Array.isArray(response?.data?.staff)
+          ? response.data.staff
+          : Array.isArray(response?.data?.users)
+            ? response.data.users
+            : [];
+
+        if (isActive) {
+          setStaff(list);
+        }
+      } catch (error) {
+        if (isActive) {
+          toast.error(error.response?.data?.message || 'Failed to load staff');
+          setStaff([]);
+        }
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchStaff();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const filteredStaff = staff.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          s.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const name = String(s?.name || '');
+    const email = String(s?.email || '');
+    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          email.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesRole = filterRole === 'all' || s.role === filterRole;
     return matchesSearch && matchesRole;
   });
+
+  if (loading) {
+    return (
+      <ManagerLayout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-[#c9963a] border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </ManagerLayout>
+    );
+  }
 
   return (
     <ManagerLayout>
@@ -174,12 +214,9 @@ const StaffPage = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <button 
-                          onClick={() => toggleStatus(person._id)}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${person.isActive ? 'bg-emerald-500' : 'bg-slate-600'}`}
-                        >
-                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${person.isActive ? 'translate-x-6' : 'translate-x-1'}`} />
-                        </button>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${person.isActive ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20'}`}>
+                          {person.isActive ? 'Active' : 'Inactive'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">

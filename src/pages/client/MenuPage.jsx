@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import Search from 'lucide-react/dist/esm/icons/search';
 import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart';
@@ -14,50 +14,12 @@ import X from 'lucide-react/dist/esm/icons/x';
 import Store from 'lucide-react/dist/esm/icons/store';
 import { useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
+import { toast } from 'react-hot-toast';
+import { connectSocket } from '../../services/socket';
 import backgroundImg from '../../assets/background.png';
 import logo from '../../assets/logo.webp';
 
-const MENU_CATEGORIES = [
-  { id: 'all', name: 'Tout', nameAr: 'الكل' },
-  { id: 'boissons', name: 'Boissons', nameAr: 'مشروبات' },
-  { id: 'entrees', name: 'Entrées', nameAr: 'مقبلات' },
-  { id: 'traditionnels', name: 'Plats Traditionnels', nameAr: 'أطباق تقليدية' },
-  { id: 'pates', name: 'Pâtes & Spécialités', nameAr: 'معكرونة' },
-  { id: 'sandwichs', name: 'Sandwichs', nameAr: 'ساندويتش' },
-  { id: 'viandes', name: 'Viandes & Grillades', nameAr: 'مشاوي' },
-  { id: 'desserts', name: 'Desserts', nameAr: 'حلويات' },
-];
-
-const MENU_ITEMS = [
-  { _id: 'b1', name: 'Eau minérale', nameAr: 'ماء معدني', price: 1.500, category: 'boissons', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004875/Eau_min%C3%A9rale_gmohyg.jpg', isAvailable: true },
-  { _id: 'b2', name: 'Soda', nameAr: 'صودا', price: 2.500, category: 'boissons', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776031616/sodaa_tuivfc.jpg', isAvailable: true },
-  { _id: 'b3', name: 'Jus', nameAr: 'عصير', price: 3.500, category: 'boissons', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004877/Jus_jl392u.jpg', isAvailable: true },
-  { _id: 'b4', name: 'Thé', nameAr: 'شاي', price: 1.500, category: 'boissons', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004876/the_qydggx.jpg', isAvailable: true },
-  { _id: 'b5', name: '9ahwa Arbi', nameAr: 'قهوة عربي', price: 1.500, category: 'boissons', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004875/9ahwa_arbi_hruf4f.jpg', isAvailable: true },
-  { _id: 'e1', name: 'Salade Tunisienne', nameAr: 'سلاطة تونسية', price: 6.000, category: 'entrees', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004876/Salade_Tunisienne_xrpgsg.jpg', isAvailable: true },
-  { _id: 'e2', name: 'Slata Mechouia', nameAr: 'سلاطة مشوية', price: 7.000, category: 'entrees', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004876/Slata_Mechouia_dezue1.jpg', isAvailable: true },
-  { _id: 'e3', name: "Brik à l'œuf", nameAr: 'بريك بالبيض', price: 2.000, category: 'entrees', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004876/Brik_%C3%A0_l_%C5%93uf_jsihkw.jpg', isAvailable: true },
-  { _id: 'e4', name: 'Fricassé thon', nameAr: 'فريكاسي تونة', price: 3.500, category: 'entrees', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004879/Fricass%C3%A9_thon_jduzc4.jpg', isAvailable: true },
-  { _id: 'e5', name: 'Lablabi', nameAr: 'لبلابي', price: 5.000, category: 'entrees', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004879/Lablabi_tgzbrd.jpg', isAvailable: true },
-  { _id: 't1', name: 'Couscous poulet', nameAr: 'كسكسي دجاج', price: 12.000, category: 'traditionnels', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004878/Couscous_au_poulet_icqdlv.jpg', isAvailable: true },
-  { _id: 't2', name: 'Couscous agneau', nameAr: 'كسكسي خروف', price: 18.000, category: 'traditionnels', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004879/Couscous_agneau_u10a1y.png', isAvailable: true },
-  { _id: 't3', name: 'Couscous poisson', nameAr: 'كسكسي سمك', price: 16.000, category: 'traditionnels', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004878/Couscous_poisson_e623zr.jpg', isAvailable: true },
-  { _id: 't4', name: 'Mloukhiya viande', nameAr: 'ملوخية لحم', price: 14.000, category: 'traditionnels', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004878/Mloukhia_viande_ftg6zf.jpg', isAvailable: true },
-  { _id: 't5', name: 'Kamounia', nameAr: 'كامونية', price: 13.000, category: 'traditionnels', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004878/Kamounia_jny08g.jpg', isAvailable: true },
-  { _id: 't6', name: 'Ojja merguez', nameAr: 'عجة مرقاز', price: 10.000, category: 'traditionnels', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004879/Ojja_Merguez_aanpqq.jpg', isAvailable: true },
-  { _id: 't7', name: 'Riz Djerbien', nameAr: 'رز جربي', price: 11.000, category: 'traditionnels', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004878/Riz_Djerbien_edniti.jpg', isAvailable: true },
-  { _id: 'p1', name: 'Makarouna salsa escalope', nameAr: 'معكرونة بالإسكالوب', price: 12.000, category: 'pates', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004878/Makarouna_salsa_escalope_vmkm73.jpg', isAvailable: true },
-  { _id: 's1', name: 'Sandwich thon', nameAr: 'ساندويتش تونة', price: 5.000, category: 'sandwichs', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004876/Sandwich_thon_ml9kr1.jpg', isAvailable: true },
-  { _id: 's2', name: 'Chapati escalope', nameAr: 'شاباتي إسكالوب', price: 7.000, category: 'sandwichs', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004876/Chapati_escalope_ndotsw.jpg', isAvailable: true },
-  { _id: 's3', name: 'Kafteji royal', nameAr: 'كفتاجي رويال', price: 6.000, category: 'sandwichs', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004878/Kafteji_royal_dl8jb9.jpg', isAvailable: true },
-  { _id: 'v1', name: 'Escalope grillée', nameAr: 'إسكالوب مشوي', price: 14.000, category: 'viandes', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004877/Escalope_grill%C3%A9e_wuuv9n.jpg', isAvailable: true },
-  { _id: 'v2', name: 'Brochettes de poulet', nameAr: 'بروشيت دجاج', price: 13.000, category: 'viandes', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004877/Brochettes_de_poulet_sk4lzr.jpg', isAvailable: true },
-  { _id: 'v3', name: 'Merguez grillée', nameAr: 'مرقاز مشوي', price: 12.000, category: 'viandes', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004877/Merguez_grill%C3%A9e_khbbky.jpg', isAvailable: true },
-  { _id: 'v4', name: 'Grillade mixte', nameAr: 'مشاوي مختلطة', price: 22.000, category: 'viandes', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004876/Grillade_mixte_axebq0.jpg', isAvailable: true },
-  { _id: 'v5', name: 'Poisson grillé', nameAr: 'سمك مشوي', price: 18.000, category: 'viandes', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004877/Poisson_grill%C3%A9_xdfdbx.jpg', isAvailable: true },
-  { _id: 'd1', name: 'Assida zgougou', nameAr: 'عصيدة زقوقو', price: 5.000, category: 'desserts', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004876/Assida_zgougou_hy1xuz.jpg', isAvailable: true },
-  { _id: 'd2', name: 'Dro3', nameAr: 'ذراع', price: 4.500, category: 'desserts', image: 'https://res.cloudinary.com/dbiszp8lt/image/upload/v1776004877/dro3_ercnll.jpg', isAvailable: true },
-];
+const DEFAULT_MENU_CATEGORY = { id: 'all', name: 'Tout', nameAr: 'الكل' };
 
 const ORDER_STEPS = [
   { id: 'received', label: 'Reçue', icon: Clock },
@@ -66,32 +28,117 @@ const ORDER_STEPS = [
   { id: 'served', label: 'Service', icon: ShoppingCart },
 ];
 
+const MONGO_ID_REGEX = /^[a-f\d]{24}$/i;
+
+const getOrdersEndpoint = () => {
+  const baseURL = String(api.defaults.baseURL || '');
+  return /\/api\/?$/.test(baseURL) ? '/orders' : '/api/orders';
+};
+
+const pickLocalizedText = (value, fallback = '') => {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object') {
+    return value.fr || value.en || value.ar || fallback;
+  }
+  return fallback;
+};
+
+const normalizeMenuCategory = (category) => ({
+  id: String(category?._id || category?.id || ''),
+  name: pickLocalizedText(category?.name, 'Category'),
+  nameAr: category?.name?.ar || '',
+});
+
+const normalizeMenuItem = (item) => ({
+  _id: String(item?._id || item?.id || ''),
+  name: pickLocalizedText(item?.name, 'Item'),
+  nameAr: item?.name?.ar || '',
+  price: Number(item?.price || 0),
+  category: String(item?.category?._id || item?.category || ''),
+  image: item?.image || '',
+  isAvailable: item?.isAvailable !== false,
+});
+
+const toId = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value._id) return String(value._id);
+  return String(value);
+};
+
+const toClientOrderStatus = (status) => {
+  if (status === 'pending' || status === 'confirmed' || status === 'new') return 'received';
+  if (status === 'preparing' || status === 'in_progress') return 'preparing';
+  if (status === 'ready') return 'ready';
+  if (status === 'served') return 'served';
+  return 'received';
+};
+
 const MenuPage = () => {
   const [searchParams] = useSearchParams();
-  const tableId = searchParams.get('table') || '1';
-  const restaurantName = searchParams.get('restaurant') || 'ليالي قرطاج';
-  const [tableNumber, setTableNumber] = useState(String(tableId));
+  const tableId = String(searchParams.get('tableId') || searchParams.get('table') || '').trim();
+  const restaurantQueryValue = String(searchParams.get('restaurant') || '').trim();
+  const restaurantIdQueryValue = String(searchParams.get('restaurantId') || restaurantQueryValue || '').trim();
+  const [tableNumber, setTableNumber] = useState(tableId || '--');
+  const [restaurantName, setRestaurantName] = useState(
+    restaurantQueryValue && !MONGO_ID_REGEX.test(restaurantQueryValue)
+      ? restaurantQueryValue
+      : 'ليالي قرطاج'
+  );
+  const [restaurantId, setRestaurantId] = useState(
+    MONGO_ID_REGEX.test(restaurantIdQueryValue) ? restaurantIdQueryValue : ''
+  );
+  const [isResolvingTable, setIsResolvingTable] = useState(true);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const ordersEndpoint = getOrdersEndpoint();
 
   useEffect(() => {
     let isMounted = true;
 
     const resolveTableNumber = async () => {
+      if (!tableId) {
+        if (isMounted) {
+          setTableNumber('--');
+          setIsResolvingTable(false);
+        }
+        return;
+      }
+
       if (/^\d+$/.test(String(tableId))) {
         if (isMounted) {
           setTableNumber(String(tableId));
+          setIsResolvingTable(false);
         }
         return;
       }
 
       try {
         const response = await api.get(`/tables/qr/${tableId}`);
+        const table = response?.data?.table;
         const number = response?.data?.table?.number;
+        const restaurant = table?.restaurant;
+
         if (isMounted) {
           setTableNumber(number !== undefined && number !== null ? String(number) : String(tableId));
+
+          if (restaurant && typeof restaurant === 'object') {
+            if (restaurant?._id) {
+              setRestaurantId(String(restaurant._id));
+            }
+            if (restaurant?.name) {
+              setRestaurantName(String(restaurant.name));
+            }
+          } else if (MONGO_ID_REGEX.test(String(restaurant || ''))) {
+            setRestaurantId(String(restaurant));
+          }
         }
       } catch {
         if (isMounted) {
           setTableNumber(String(tableId));
+        }
+      } finally {
+        if (isMounted) {
+          setIsResolvingTable(false);
         }
       }
     };
@@ -111,10 +158,76 @@ const MenuPage = () => {
   const [orderNotes, setOrderNotes] = useState('');
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [confirmedOrderNumber, setConfirmedOrderNumber] = useState('');
+  const [trackedOrderId, setTrackedOrderId] = useState('');
+  const [trackedOrderStatus, setTrackedOrderStatus] = useState('received');
+  const [trackedOrderDetails, setTrackedOrderDetails] = useState('');
+  const [menuCategories, setMenuCategories] = useState([DEFAULT_MENU_CATEGORY]);
+  const [menuItems, setMenuItems] = useState([]);
+  const [menuLoading, setMenuLoading] = useState(true);
+  const lastStatusRef = useRef('');
 
-  const filteredItems = MENU_ITEMS.filter((item) => {
+  useEffect(() => {
+    let isActive = true;
+
+    const fetchMenuData = async () => {
+      if (!restaurantId) {
+        if (isActive) {
+          setMenuCategories([DEFAULT_MENU_CATEGORY]);
+          setMenuItems([]);
+          setMenuLoading(false);
+        }
+        return;
+      }
+
+      setMenuLoading(true);
+
+      try {
+        const [categoriesResponse, itemsResponse] = await Promise.all([
+          api.get('/menu/categories', { params: { restaurantId } }),
+          api.get('/menu/items', { params: { restaurantId } }),
+        ]);
+
+        if (!isActive) return;
+
+        const categories = Array.isArray(categoriesResponse?.data?.categories)
+          ? categoriesResponse.data.categories.map(normalizeMenuCategory).filter((category) => category.id)
+          : [];
+
+        const items = Array.isArray(itemsResponse?.data?.menuItems)
+          ? itemsResponse.data.menuItems.map(normalizeMenuItem).filter((item) => item._id)
+          : [];
+
+        setMenuCategories([DEFAULT_MENU_CATEGORY, ...categories]);
+        setMenuItems(items);
+      } catch {
+        if (!isActive) return;
+        setMenuCategories([DEFAULT_MENU_CATEGORY]);
+        setMenuItems([]);
+      } finally {
+        if (isActive) {
+          setMenuLoading(false);
+        }
+      }
+    };
+
+    fetchMenuData();
+
+    return () => {
+      isActive = false;
+    };
+  }, [restaurantId]);
+
+  useEffect(() => {
+    if (activeCategory !== 'all' && !menuCategories.some((category) => category.id === activeCategory)) {
+      setActiveCategory('all');
+    }
+  }, [activeCategory, menuCategories]);
+
+  const filteredItems = menuItems.filter((item) => {
     const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const searchValue = searchQuery.toLowerCase();
+    const matchesSearch = item.name.toLowerCase().includes(searchValue)
+      || String(item.nameAr || '').toLowerCase().includes(searchValue);
     return matchesCategory && matchesSearch;
   });
 
@@ -158,35 +271,136 @@ const MenuPage = () => {
     return found ? found.quantity : 0;
   };
 
-  const handlePlaceOrder = () => {
-    if (cart.length === 0) {
+  useEffect(() => {
+    if (!tableId || !orderPlaced) return;
+
+    const socket = connectSocket();
+    socket.emit('joinTable', tableId);
+
+    const handleOrderRealtimeUpdate = (payload) => {
+      const order = payload?.order;
+      if (!order) return;
+
+      const incomingTableId = toId(order?.table);
+      if (incomingTableId !== tableId) return;
+
+      const incomingOrderId = toId(order?._id || order?.id);
+      if (trackedOrderId && incomingOrderId !== trackedOrderId) return;
+
+      const nextStatus = toClientOrderStatus(order?.status);
+      const details = Array.isArray(order?.items)
+        ? order.items
+            .map((item) => `${Number(item?.quantity || 1)}x ${item?.name || item?.menuItem?.name?.fr || 'Item'}`)
+            .join(', ')
+        : trackedOrderDetails;
+
+      setTrackedOrderId(incomingOrderId || trackedOrderId);
+      setTrackedOrderStatus(nextStatus);
+      setTrackedOrderDetails(details || '');
+    };
+
+    socket.on('order_updated', handleOrderRealtimeUpdate);
+    socket.on('order_ready', handleOrderRealtimeUpdate);
+    socket.on('orderStatusUpdated', handleOrderRealtimeUpdate);
+
+    return () => {
+      socket.off('order_updated', handleOrderRealtimeUpdate);
+      socket.off('order_ready', handleOrderRealtimeUpdate);
+      socket.off('orderStatusUpdated', handleOrderRealtimeUpdate);
+    };
+  }, [orderPlaced, tableId, trackedOrderDetails, trackedOrderId]);
+
+  useEffect(() => {
+    if (!orderPlaced) {
+      lastStatusRef.current = '';
       return;
     }
 
-    const cartItems = cart.map((entry) => ({
-      ...entry.item,
-      quantity: entry.quantity,
-    }));
+    if (trackedOrderStatus && trackedOrderStatus !== lastStatusRef.current) {
+      if (trackedOrderStatus === 'ready') {
+        toast.success('Your order is ready');
+      }
+      if (trackedOrderStatus === 'served') {
+        toast.success('Your order has been served');
+      }
+      lastStatusRef.current = trackedOrderStatus;
+    }
+  }, [orderPlaced, trackedOrderStatus]);
 
-    const items = cartItems.map((item) => ({
-      menuItem: item._id,
-      quantity: item.quantity,
-      price: item.price,
-      name: item.name,
-    }));
-
-    if (items.length === 0) {
+  const handlePlaceOrder = async () => {
+    if (isPlacingOrder || cart.length === 0) {
       return;
     }
 
-    setIsCartOpen(false);
-    setConfirmedOrderNumber(`#${Math.floor(1000 + Math.random() * 9000)}`);
-    setTimeout(() => {
+    if (!tableId) {
+      toast.error('Missing tableId in QR URL');
+      return;
+    }
+
+    if (!restaurantId) {
+      toast.error('Unable to resolve restaurant for this table');
+      return;
+    }
+
+    if (menuLoading) {
+      toast.error('Menu is still loading, please wait a moment');
+      return;
+    }
+
+    setIsPlacingOrder(true);
+
+    try {
+      const items = cart.map((entry) => {
+        const item = entry.item;
+        return {
+          menuItem: item._id,
+          quantity: entry.quantity,
+          price: item.price,
+          name: item.name,
+        };
+      });
+
+      if (items.length === 0 || items.some((item) => !item.menuItem)) {
+        toast.error('Some cart items are invalid, please refresh and try again');
+        return;
+      }
+
+      const response = await api.post(ordersEndpoint, {
+        restaurant: restaurantId,
+        table: tableId,
+        tableId,
+        items,
+        notes: orderNotes,
+        paymentMethod,
+      });
+
+      const createdOrder = response?.data?.order;
+      const orderNumber = createdOrder?.orderNumber;
+      const createdOrderId = toId(createdOrder?._id || createdOrder?.id);
+      const createdStatus = toClientOrderStatus(createdOrder?.status);
+      const details = items
+        .map((item) => `${Number(item.quantity || 1)}x ${item.name}`)
+        .join(', ');
+
+      setIsCartOpen(false);
+      setConfirmedOrderNumber(orderNumber ? `#${orderNumber}` : `#${Math.floor(1000 + Math.random() * 9000)}`);
+      setTrackedOrderId(createdOrderId);
+      setTrackedOrderStatus(createdStatus);
+      setTrackedOrderDetails(details);
       setOrderPlaced(true);
-    }, 300);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Failed to place order');
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
 
   if (orderPlaced) {
+    const activeStepIndex = Math.max(
+      0,
+      ORDER_STEPS.findIndex((step) => step.id === trackedOrderStatus)
+    );
+
     return (
       <div
         className="relative min-h-screen flex items-center justify-center p-6"
@@ -219,17 +433,21 @@ const MenuPage = () => {
 
           <p className="text-xl font-semibold text-[#0a1628]">Votre commande est confirmée!</p>
           <p className="mt-2 text-[#c9963a] font-bold text-lg">{confirmedOrderNumber}</p>
+          {trackedOrderDetails && (
+            <p className="mt-1 text-xs text-[#0a1628]/65">{trackedOrderDetails}</p>
+          )}
 
           <div className="mt-7 space-y-3 text-left">
             {ORDER_STEPS.map((step, index) => {
               const Icon = step.icon;
-              const isCurrent = index === 0;
+              const isCurrent = index === activeStepIndex;
+              const isCompleted = index < activeStepIndex;
               return (
                 <div key={step.id} className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isCurrent ? 'bg-[#c9963a] text-white' : 'bg-[#0a1628]/10 text-[#0a1628]/60'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isCurrent || isCompleted ? 'bg-[#c9963a] text-white' : 'bg-[#0a1628]/10 text-[#0a1628]/60'}`}>
                     <Icon className="w-4 h-4" />
                   </div>
-                  <span className={`${isCurrent ? 'text-[#0a1628] font-semibold' : 'text-[#0a1628]/60'}`}>
+                  <span className={`${isCurrent || isCompleted ? 'text-[#0a1628] font-semibold' : 'text-[#0a1628]/60'}`}>
                     {step.label}
                   </span>
                 </div>
@@ -243,6 +461,9 @@ const MenuPage = () => {
               setCart([]);
               setOrderNotes('');
               setPaymentMethod('cash');
+              setTrackedOrderId('');
+              setTrackedOrderStatus('received');
+              setTrackedOrderDetails('');
             }}
             className="mt-8 px-6 py-3 rounded-xl bg-[#0a1628] text-white font-bold hover:bg-[#1e3a5f] transition-colors"
           >
@@ -278,7 +499,7 @@ const MenuPage = () => {
 
             <div className="bg-[#0a1628] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm inline-flex items-center gap-2">
               <Store className="w-4 h-4 text-[#e8c56a]" />
-              <span>Table {tableNumber}</span>
+              <span>{isResolvingTable ? 'Resolving table...' : `Table ${tableNumber}`}</span>
             </div>
           </div>
         </header>
@@ -297,7 +518,7 @@ const MenuPage = () => {
         </div>
 
         <div className="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
-          {MENU_CATEGORIES.map((category) => {
+          {menuCategories.map((category) => {
             const isActive = activeCategory === category.id;
             return (
               <button
@@ -318,8 +539,15 @@ const MenuPage = () => {
           })}
         </div>
 
-        <div className="px-4 mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {filteredItems.map((item, index) => {
+        <div className="px-4 mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {menuLoading && (
+            <div className="col-span-full bg-white/80 border border-[#c9963a]/20 rounded-2xl p-8 text-center text-[#0a1628]/70">
+              <div className="mx-auto h-7 w-7 rounded-full border-2 border-[#c9963a]/30 border-t-[#c9963a] animate-spin" />
+              <p className="text-sm mt-3 font-semibold">Chargement du menu...</p>
+            </div>
+          )}
+
+          {!menuLoading && filteredItems.map((item, index) => {
             const quantity = getItemQuantity(item._id);
             const itemImage = item.image;
 
@@ -381,6 +609,19 @@ const MenuPage = () => {
               </Motion.div>
             );
           })}
+
+          {!menuLoading && filteredItems.length === 0 && (
+            <div className="col-span-full bg-white/80 border border-[#c9963a]/20 rounded-2xl p-8 text-center text-[#0a1628]/70">
+              <p className="text-lg font-semibold">
+                {!restaurantId ? 'Restaurant introuvable' : 'Aucun plat trouve'}
+              </p>
+              <p className="text-sm mt-1">
+                {!restaurantId
+                  ? 'Veuillez rescanner le QR code de la table pour charger le menu.'
+                  : 'Essayez une autre categorie ou modifiez votre recherche.'}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -514,10 +755,10 @@ const MenuPage = () => {
                 </div>
                 <button
                   onClick={handlePlaceOrder}
-                  disabled={cart.length === 0}
+                  disabled={cart.length === 0 || isPlacingOrder}
                   className="w-full py-4 rounded-xl bg-[#c9963a] hover:bg-[#a07830] text-[#0a1628] font-bold text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Place Order
+                  {isPlacingOrder ? 'Placing Order...' : 'Place Order'}
                 </button>
               </div>
             </Motion.div>

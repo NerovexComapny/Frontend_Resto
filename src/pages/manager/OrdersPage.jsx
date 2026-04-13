@@ -41,6 +41,7 @@ const normalizeOrder = (order) => {
 
 const OrdersPage = () => {
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
@@ -56,7 +57,11 @@ const OrdersPage = () => {
   useEffect(() => {
     let isActive = true;
 
-    const fetchOrders = async () => {
+    const fetchOrders = async (showLoading = false) => {
+      if (showLoading) {
+        setLoading(true);
+      }
+
       try {
         const response = await api.get(getOrdersEndpoint());
         if (!isActive) return;
@@ -67,11 +72,15 @@ const OrdersPage = () => {
         if (isActive) {
           toast.error(error.response?.data?.message || error.message);
         }
+      } finally {
+        if (showLoading && isActive) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchOrders();
-    const pollInterval = setInterval(fetchOrders, 30000);
+    fetchOrders(true);
+    const pollInterval = setInterval(() => fetchOrders(false), 30000);
 
     const socket = connectSocket();
     if (user?.restaurant) {
@@ -100,6 +109,16 @@ const OrdersPage = () => {
       socket.off('orderStatusUpdated', handleOrderStatusUpdated);
     };
   }, [user?.restaurant]);
+
+  if (loading) {
+    return (
+      <ManagerLayout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-[#7c6af7] border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </ManagerLayout>
+    );
+  }
 
   const summaryCounts = useMemo(() => {
     return {

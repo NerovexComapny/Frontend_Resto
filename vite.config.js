@@ -1,9 +1,26 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
+import process from 'node:process'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-export default defineConfig({
+const escapeForRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  let apiRuntimePattern = /^https?:\/\/[^/]+\/api\/.*/i
+
+  try {
+    const apiUrl = String(env.VITE_API_URL || '').trim()
+    if (apiUrl) {
+      const apiOrigin = new URL(apiUrl).origin
+      apiRuntimePattern = new RegExp(`^${escapeForRegex(apiOrigin)}\\/api\\/.*`, 'i')
+    }
+  } catch {
+    // Keep generic HTTPS API fallback pattern if VITE_API_URL is not set/valid.
+  }
+
+  return {
   plugins: [
     react(),
     tailwindcss(),
@@ -46,7 +63,7 @@ export default defineConfig({
             }
           },
           {
-            urlPattern: /^http:\/\/localhost:5000\/api\/.*/i,
+            urlPattern: apiRuntimePattern,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
@@ -74,4 +91,5 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom']
   }
+}
 })

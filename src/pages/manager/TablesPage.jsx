@@ -29,6 +29,7 @@ const getTablesEndpoint = () => {
 
 const TablesPage = () => {
   const [tables, setTables] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedQrTable, setSelectedQrTable] = useState(null);
   const [newTable, setNewTable] = useState({ number: '', capacity: '4' });
@@ -54,6 +55,7 @@ const TablesPage = () => {
     let isActive = true;
 
     const fetchTables = async () => {
+      setLoading(true);
       try {
         const response = await api.get(getTablesEndpoint());
         if (!isActive) return;
@@ -63,6 +65,10 @@ const TablesPage = () => {
       } catch (error) {
         if (isActive) {
           toast.error(error.response?.data?.message || error.message);
+        }
+      } finally {
+        if (isActive) {
+          setLoading(false);
         }
       }
     };
@@ -155,8 +161,22 @@ const TablesPage = () => {
           animate="visible"
           className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
         >
+          {loading && (
+            <div className="col-span-full min-h-[40vh] flex items-center justify-center">
+              <div className="w-8 h-8 border-2 border-[#7c6af7] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
+
+          {!loading && tables.length === 0 && (
+            <div className="col-span-full min-h-[40vh] flex flex-col items-center justify-center text-slate-400">
+              <Users className="w-12 h-12 mb-3 opacity-70" />
+              <p className="text-lg font-semibold">No tables found</p>
+              <p className="text-sm text-slate-500 mt-1">Create your first table to generate a QR code.</p>
+            </div>
+          )}
+
           <AnimatePresence>
-            {tables.map((table) => {
+            {!loading && tables.map((table) => {
               const styles = getStatusStyle(table.status);
               
               return (
@@ -267,7 +287,7 @@ const TablesPage = () => {
                     <label className="block text-sm font-medium text-slate-400 mb-1.5">Restaurant ID (Auto)</label>
                     <input 
                       type="text" 
-                      value={user?.restaurant || 'REST-847291'}
+                      value={user?.restaurant || ''}
                       disabled
                       className="w-full px-4 py-3 bg-[#0f2040] border border-[#1e3a5f] rounded-xl text-slate-500 cursor-not-allowed opacity-70"
                     />

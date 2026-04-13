@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { Toaster } from 'react-hot-toast';
+import ErrorBoundary from './components/shared/ErrorBoundary';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register'
 
@@ -9,7 +10,9 @@ registerSW({ immediate: true })
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
     <Toaster 
       position="top-right"
       toastOptions={{
