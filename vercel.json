@@ -1,11 +1,15 @@
 {
-  "installCommand": "npm install --no-audit --no-fund",
   "buildCommand": "node node_modules/vite/bin/vite.js build",
   "outputDirectory": "dist",
-  "rewrites": [
+  "installCommand": "npm install --no-audit --no-fund",
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
