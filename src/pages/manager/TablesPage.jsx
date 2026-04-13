@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import Users from 'lucide-react/dist/esm/icons/users';
 import QrCode from 'lucide-react/dist/esm/icons/qr-code';
@@ -31,9 +31,18 @@ const TablesPage = () => {
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingTableId, setEditingTableId] = useState('');
   const [selectedQrTable, setSelectedQrTable] = useState(null);
   const [newTable, setNewTable] = useState({ number: '', capacity: '4' });
+  const [editTable, setEditTable] = useState({ number: '', capacity: '4', status: 'available' });
   const user = useAuthStore((state) => state.user);
+
+  const getRequestError = (error) => {
+    const status = error?.response?.status;
+    const message = error?.response?.data?.message || error?.message || 'Request failed';
+    return status ? `${status} - ${message}` : message;
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -64,7 +73,7 @@ const TablesPage = () => {
         setTables(apiTables);
       } catch (error) {
         if (isActive) {
-          toast.error(error.response?.data?.message || error.message);
+          toast.error(getRequestError(error));
         }
       } finally {
         if (isActive) {
@@ -83,16 +92,23 @@ const TablesPage = () => {
   const handleCreateTable = async (event) => {
     event.preventDefault();
 
-    if (!user?.restaurant) {
-      toast.error('Missing restaurant context');
+    const number = Number(newTable.number);
+    const capacity = Number(newTable.capacity) || 4;
+
+    if (!number || number <= 0) {
+      toast.error('Table number must be a positive value');
+      return;
+    }
+
+    if (!capacity || capacity <= 0) {
+      toast.error('Capacity must be a positive value');
       return;
     }
 
     try {
       const payload = {
-        number: Number(newTable.number),
-        capacity: Number(newTable.capacity) || 4,
-        restaurant: user.restaurant,
+        number,
+        capacity,
       };
 
       const response = await api.post(getTablesEndpoint(), payload);
@@ -106,7 +122,69 @@ const TablesPage = () => {
       setNewTable({ number: '', capacity: '4' });
       toast.success('Table created successfully');
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(getRequestError(error));
+    }
+  };
+
+  const openEditModal = (table) => {
+    setEditingTableId(String(table?._id || ''));
+    setEditTable({
+      number: String(table?.number ?? ''),
+      capacity: String(table?.capacity ?? '4'),
+      status: table?.status || 'available',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingTableId('');
+    setEditTable({ number: '', capacity: '4', status: 'available' });
+  };
+
+  const handleUpdateTable = async (event) => {
+    event.preventDefault();
+
+    if (!editingTableId) {
+      toast.error('Missing table id for update');
+      return;
+    }
+
+    const number = Number(editTable.number);
+    const capacity = Number(editTable.capacity) || 4;
+
+    if (!number || number <= 0) {
+      toast.error('Table number must be a positive value');
+      return;
+    }
+
+    if (!capacity || capacity <= 0) {
+      toast.error('Capacity must be a positive value');
+      return;
+    }
+
+    try {
+      const payload = {
+        number,
+        capacity,
+        status: editTable.status,
+      };
+
+      const response = await api.put(`${getTablesEndpoint()}/${editingTableId}`, payload);
+      const updatedTable = response?.data?.table;
+
+      if (updatedTable?._id) {
+        setTables((previousTables) =>
+          previousTables.map((table) =>
+            table._id === updatedTable._id ? updatedTable : table
+          )
+        );
+      }
+
+      closeEditModal();
+      toast.success('Table updated successfully');
+    } catch (error) {
+      toast.error(getRequestError(error));
     }
   };
 
@@ -116,7 +194,7 @@ const TablesPage = () => {
       setTables((previousTables) => previousTables.filter((table) => table._id !== tableId));
       toast.success('Table deleted successfully');
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(getRequestError(error));
     }
   };
 
@@ -155,7 +233,7 @@ const TablesPage = () => {
         </div>
 
         {/* Floor Plan Grid */}
-        <motion.div 
+        <Motion.div 
           variants={containerVariants}
           initial="hidden"
           animate="visible"
@@ -180,7 +258,7 @@ const TablesPage = () => {
               const styles = getStatusStyle(table.status);
               
               return (
-                <motion.div
+                <Motion.div
                   layout
                   key={table._id}
                   variants={cardVariants}
@@ -188,7 +266,10 @@ const TablesPage = () => {
                 >
                   {/* Actions (Hover) */}
                   <div className="absolute top-3 right-3 flex space-x-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-2 bg-[#132845]/80 backdrop-blur-md border border-[#1e3a5f] text-slate-300 hover:text-[#7c6af7] rounded-xl transition-colors">
+                    <button
+                      onClick={() => openEditModal(table)}
+                      className="p-2 bg-[#132845]/80 backdrop-blur-md border border-[#1e3a5f] text-slate-300 hover:text-[#7c6af7] rounded-xl transition-colors"
+                    >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
@@ -231,11 +312,11 @@ const TablesPage = () => {
                       {table.status}
                     </span>
                   </div>
-                </motion.div>
+                </Motion.div>
               );
             })}
           </AnimatePresence>
-        </motion.div>
+        </Motion.div>
 
         {/* --- MODALS --- */}
         
@@ -243,12 +324,12 @@ const TablesPage = () => {
         <AnimatePresence>
           {isAddModalOpen && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-              <motion.div 
+              <Motion.div 
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="absolute inset-0 bg-black/80 backdrop-blur-sm"
                 onClick={() => setIsAddModalOpen(false)}
               />
-              <motion.div 
+              <Motion.div 
                 variants={modalVariants} initial="hidden" animate="visible" exit="exit"
                 className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-6 w-full max-w-sm relative z-10 shadow-2xl"
               >
@@ -302,7 +383,78 @@ const TablesPage = () => {
                     </button>
                   </div>
                 </form>
-              </motion.div>
+              </Motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Edit Table Modal */}
+        <AnimatePresence>
+          {isEditModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <Motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                onClick={closeEditModal}
+              />
+              <Motion.div
+                variants={modalVariants} initial="hidden" animate="visible" exit="exit"
+                className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-6 w-full max-w-sm relative z-10 shadow-2xl"
+              >
+                <div className="flex justify-between items-center mb-6 border-b border-[#1e3a5f]/50 pb-4">
+                  <h3 className="text-2xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>Edit Table</h3>
+                  <button onClick={closeEditModal} className="p-2 text-slate-400 hover:text-[#7c6af7] bg-[#132845] rounded-xl transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form className="space-y-5" onSubmit={handleUpdateTable}>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1.5">Table Number</label>
+                    <input
+                      type="number"
+                      value={editTable.number}
+                      onChange={(e) => setEditTable((previous) => ({ ...previous, number: e.target.value }))}
+                      className="w-full px-4 py-3 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-[#7c6af7] focus:ring-1 focus:ring-[#7c6af7] transition-all font-bold text-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1.5">Seat Capacity</label>
+                    <div className="relative">
+                      <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                      <input
+                        type="number"
+                        value={editTable.capacity}
+                        onChange={(e) => setEditTable((previous) => ({ ...previous, capacity: e.target.value }))}
+                        className="w-full pl-12 pr-4 py-3 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-[#7c6af7] focus:ring-1 focus:ring-[#7c6af7] transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1.5">Status</label>
+                    <select
+                      value={editTable.status}
+                      onChange={(e) => setEditTable((previous) => ({ ...previous, status: e.target.value }))}
+                      className="w-full px-4 py-3 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 focus:outline-none focus:border-[#7c6af7] focus:ring-1 focus:ring-[#7c6af7] transition-all"
+                    >
+                      <option value="available">Available</option>
+                      <option value="occupied">Occupied</option>
+                      <option value="reserved">Reserved</option>
+                    </select>
+                  </div>
+
+                  <div className="pt-4 flex gap-3">
+                    <button type="button" onClick={closeEditModal} className="flex-1 py-3 px-4 bg-[#132845] hover:bg-[#1e3a5f] text-slate-300 rounded-xl font-medium transition-colors">
+                      Cancel
+                    </button>
+                    <button type="submit" className="flex-1 py-3 px-4 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] rounded-xl font-semibold transition-colors">
+                      Update Table
+                    </button>
+                  </div>
+                </form>
+              </Motion.div>
             </div>
           )}
         </AnimatePresence>
@@ -311,12 +463,12 @@ const TablesPage = () => {
         <AnimatePresence>
           {selectedQrTable && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-              <motion.div 
+              <Motion.div 
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="absolute inset-0 bg-black/80 backdrop-blur-sm"
                 onClick={() => setSelectedQrTable(null)}
               />
-              <motion.div 
+              <Motion.div 
                 variants={modalVariants} initial="hidden" animate="visible" exit="exit"
                 className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl overflow-hidden w-full max-w-sm relative z-10 shadow-2xl flex flex-col"
               >
@@ -355,7 +507,7 @@ const TablesPage = () => {
                     <span>Print</span>
                   </button>
                 </div>
-              </motion.div>
+              </Motion.div>
             </div>
           )}
         </AnimatePresence>

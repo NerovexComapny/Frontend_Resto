@@ -39,6 +39,14 @@ const normalizeOrder = (order) => {
   };
 };
 
+const getOrderDateKey = (value) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return '';
+  }
+  return parsed.toISOString().split('T')[0];
+};
+
 const OrdersPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -100,25 +108,21 @@ const OrdersPage = () => {
     };
 
     socket.on('newOrder', handleNewOrder);
+    socket.on('new_order', handleNewOrder);
     socket.on('orderStatusUpdated', handleOrderStatusUpdated);
+    socket.on('order_updated', handleOrderStatusUpdated);
+    socket.on('order_ready', handleOrderStatusUpdated);
 
     return () => {
       isActive = false;
       clearInterval(pollInterval);
       socket.off('newOrder', handleNewOrder);
+      socket.off('new_order', handleNewOrder);
       socket.off('orderStatusUpdated', handleOrderStatusUpdated);
+      socket.off('order_updated', handleOrderStatusUpdated);
+      socket.off('order_ready', handleOrderStatusUpdated);
     };
   }, [user?.restaurant]);
-
-  if (loading) {
-    return (
-      <ManagerLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-[#7c6af7] border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      </ManagerLayout>
-    );
-  }
 
   const summaryCounts = useMemo(() => {
     return {
@@ -132,7 +136,12 @@ const OrdersPage = () => {
   }, [orders]);
 
   const getTimeElapsed = (date) => {
-    const diffInMinutes = Math.floor((currentTime - new Date(date)) / 60000);
+    const createdAt = new Date(date);
+    if (Number.isNaN(createdAt.getTime())) {
+      return '-';
+    }
+
+    const diffInMinutes = Math.floor((currentTime - createdAt) / 60000);
     if (diffInMinutes < 1) {
       return 'Just now';
     }
@@ -165,14 +174,31 @@ const OrdersPage = () => {
   const filteredOrders = useMemo(() => {
     return orders
       .filter((order) => {
-        const matchesSearch = (order.orderNumber || '').toLowerCase().includes(searchQuery.trim().toLowerCase());
+        const orderNumber = String(order?.orderNumber || '');
+        const matchesSearch = orderNumber.toLowerCase().includes(searchQuery.trim().toLowerCase());
         const matchesStatus = statusFilter === 'All' || order.status === statusFilter.toLowerCase();
-        const orderDate = new Date(order.createdAt).toISOString().split('T')[0];
+        const orderDate = getOrderDateKey(order?.createdAt);
         const matchesDate = !dateFilter || orderDate === dateFilter;
         return matchesSearch && matchesStatus && matchesDate;
       })
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      .sort((a, b) => {
+        const aTime = new Date(a?.createdAt).getTime();
+        const bTime = new Date(b?.createdAt).getTime();
+        const safeATime = Number.isNaN(aTime) ? 0 : aTime;
+        const safeBTime = Number.isNaN(bTime) ? 0 : bTime;
+        return safeBTime - safeATime;
+      });
   }, [orders, searchQuery, statusFilter, dateFilter]);
+
+  if (loading) {
+    return (
+      <ManagerLayout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-[#7c6af7] border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </ManagerLayout>
+    );
+  }
 
   const openCancelModal = (order) => {
     setCancelTarget(order);
