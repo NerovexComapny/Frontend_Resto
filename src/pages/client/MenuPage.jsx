@@ -75,6 +75,7 @@ const toClientOrderStatus = (status) => {
 };
 
 const MenuPage = () => {
+  console.log('MENU PAGE RENDERED');
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const tableId = String(searchParams.get('tableId') || searchParams.get('table') || '').trim();

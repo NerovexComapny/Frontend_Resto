@@ -34,6 +34,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   const { token, user } = useAuthStore();
 
   if (!token) {
+    console.log('PROTECTED_ROUTE - no token, redirecting');
     return <Navigate to="/login" replace />;
   }
 
@@ -44,8 +45,14 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   return children;
 };
 
+const CatchAllRedirect = () => {
+  console.log('CATCH_ALL hit');
+  return <Navigate to="/login" replace />;
+};
+
 const App = () => {
   const { token, user } = useAuthStore();
+  console.log('APP RENDERING, path:', window.location.hash);
 
   return (
     <HashRouter>
@@ -80,7 +87,7 @@ const App = () => {
           <Route path="/kitchen" element={<ProtectedRoute allowedRoles={['cook']}><KitchenDisplayPage /></ProtectedRoute>} />
 
           {/* Catch All */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<CatchAllRedirect />} />
         </Routes>
       </Suspense>
     </HashRouter>
