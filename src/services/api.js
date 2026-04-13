@@ -27,6 +27,29 @@ const api = axios.create({
   }
 });
 
+export const publicApi = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+publicApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const suppressToast = Boolean(error?.config?.suppressGlobalErrorToast);
+    if (!suppressToast) {
+      const message = getFriendlyErrorMessage(error);
+      const now = Date.now();
+      if (message !== lastToast.message || now - lastToast.ts > 1200) {
+        toast.error(message);
+        lastToast = { message, ts: now };
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Request interceptor to attach token
 api.interceptors.request.use(
   (config) => {

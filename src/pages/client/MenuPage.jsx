@@ -14,7 +14,7 @@ import X from 'lucide-react/dist/esm/icons/x';
 import Store from 'lucide-react/dist/esm/icons/store';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import api from '../../services/api';
+import api, { publicApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { connectSocket } from '../../services/socket';
 import backgroundImg from '../../assets/background.png';
@@ -32,7 +32,7 @@ const getDefaultMenuCategory = (t) => ({
 const MONGO_ID_REGEX = /^[a-f\d]{24}$/i;
 
 const getOrdersEndpoint = () => {
-  const baseURL = String(api.defaults.baseURL || '');
+  const baseURL = String(publicApi.defaults.baseURL || '');
   return /\/api\/?$/.test(baseURL) ? '/orders' : '/api/orders';
 };
 
@@ -115,7 +115,7 @@ const MenuPage = () => {
       }
 
       try {
-        const response = await api.get(`/tables/qr/${tableId}`);
+        const response = await publicApi.get(`/tables/qr/${tableId}`);
         const table = response?.data?.table;
         const number = response?.data?.table?.number;
         const restaurant = table?.restaurant;
@@ -195,8 +195,8 @@ const MenuPage = () => {
 
       try {
         const [categoriesResponse, itemsResponse] = await Promise.all([
-          api.get('/menu/categories', { params: { restaurantId } }),
-          api.get('/menu/items', { params: { restaurantId } }),
+          publicApi.get('/menu/categories', { params: { restaurantId } }),
+          publicApi.get('/menu/items', { params: { restaurantId } }),
         ]);
 
         if (!isActive) return;
@@ -377,7 +377,7 @@ const MenuPage = () => {
         return;
       }
 
-      const response = await api.post(ordersEndpoint, {
+      const response = await publicApi.post(ordersEndpoint, {
         restaurant: restaurantId,
         table: tableId,
         tableId,
