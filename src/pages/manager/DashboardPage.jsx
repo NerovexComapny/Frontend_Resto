@@ -145,10 +145,11 @@ const DashboardPage = () => {
         if (!isActive) return;
 
         const apiOrders = Array.isArray(ordersResponse?.data?.orders) ? ordersResponse.data.orders : [];
+        const sortedOrders = [...apiOrders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         const apiTables = Array.isArray(tablesResponse?.data?.tables) ? tablesResponse.data.tables : [];
 
         const today = new Date();
-        const todayOrders = apiOrders.filter((order) => {
+        const todayOrders = sortedOrders.filter((order) => {
           const createdAt = order?.createdAt ? new Date(order.createdAt) : null;
           return createdAt && !Number.isNaN(createdAt.getTime()) && isSameDay(createdAt, today);
         });
@@ -157,7 +158,7 @@ const DashboardPage = () => {
           .filter((order) => normalizeStatus(order?.status) !== 'cancelled')
           .reduce((sum, order) => sum + Number(order?.totalAmount || 0), 0);
 
-        const pendingOrders = apiOrders.filter((order) => normalizeStatus(order?.status) === 'pending').length;
+        const pendingOrders = sortedOrders.filter((order) => normalizeStatus(order?.status) === 'pending').length;
 
         const activeStatuses = new Set(['pending', 'confirmed', 'preparing', 'ready']);
         const occupiedTableIds = new Set(
@@ -167,7 +168,7 @@ const DashboardPage = () => {
             .filter(Boolean)
         );
 
-        for (const order of apiOrders) {
+        for (const order of sortedOrders) {
           if (!activeStatuses.has(normalizeStatus(order?.status))) continue;
 
           const tableRef = order?.table;
@@ -197,7 +198,7 @@ const DashboardPage = () => {
             .map((table) => [String(table._id), table.number])
         );
 
-        const mappedOrders = apiOrders.slice(0, 5).map((order) => ({
+        const mappedOrders = sortedOrders.slice(0, 5).map((order) => ({
           id: formatOrderId(order.orderNumber, order._id),
           table: formatTableNumber(resolveTableNumber(order?.table, tableNumbersById)),
           amount: Number(order.totalAmount || 0).toFixed(2),
@@ -205,7 +206,7 @@ const DashboardPage = () => {
         }));
 
         setRecentOrders(mappedOrders);
-        setRevenueData(buildRevenueData(apiOrders, i18n.language));
+        setRevenueData(buildRevenueData(sortedOrders, i18n.language));
       } catch (error) {
         if (isActive) {
           toast.error(error?.response?.data?.message || error.message);

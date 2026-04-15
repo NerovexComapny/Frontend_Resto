@@ -14,3 +14,9 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+## Environment
+
+Set this variable in your frontend environment to control client session auto-close after an order is served:
+
+- `VITE_CLIENT_INACTIVITY_TIMEOUT_MS` (default: `15000`)

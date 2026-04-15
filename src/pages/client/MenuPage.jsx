@@ -21,6 +21,12 @@ import backgroundImg from '../../assets/background.png';
 import logo from '../../assets/logo.webp';
 
 const DEFAULT_MENU_CATEGORY_ID = 'all';
+const DEFAULT_CLIENT_INACTIVITY_TIMEOUT_MS = 15000;
+const configuredClientTimeoutMs = Number(import.meta.env.VITE_CLIENT_INACTIVITY_TIMEOUT_MS);
+const CLIENT_INACTIVITY_TIMEOUT_MS = Number.isFinite(configuredClientTimeoutMs) && configuredClientTimeoutMs > 0
+  ? configuredClientTimeoutMs
+  : DEFAULT_CLIENT_INACTIVITY_TIMEOUT_MS;
+const CLIENT_ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
 
 const getDefaultMenuCategory = (t) => ({
   id: DEFAULT_MENU_CATEGORY_ID,
@@ -33,6 +39,17 @@ const MONGO_ID_REGEX = /^[a-f\d]{24}$/i;
 const getOrdersEndpoint = () => {
   const baseURL = String(publicApi.defaults.baseURL || '');
   return /\/api\/?$/.test(baseURL) ? '/orders' : '/api/orders';
+};
+
+const getTableReleaseEndpoint = (tableId) => {
+  const baseURL = String(publicApi.defaults.baseURL || '');
+  const normalizedTableId = String(tableId || '').trim();
+  if (!normalizedTableId) {
+    return '';
+  }
+
+  const path = `/tables/${normalizedTableId}/release`;
+  return /\/api\/?$/.test(baseURL) ? path : `/api${path}`;
 };
 
 const pickLocalizedText = (value, fallback = '') => {
@@ -167,6 +184,7 @@ const MenuPage = () => {
   const [menuItems, setMenuItems] = useState([]);
   const [menuLoading, setMenuLoading] = useState(true);
   const lastStatusRef = useRef('');
+  const lastClientActivityRef = useRef(Date.now());
   const filterBarRef = useRef(null);
   const menuGridRef = useRef(null);
   const orderSteps = useMemo(
@@ -391,6 +409,75 @@ const MenuPage = () => {
       lastStatusRef.current = trackedOrderStatus;
     }
   }, [orderPlaced, t, trackedOrderStatus]);
+
+  useEffect(() => {
+    if (!orderPlaced || trackedOrderStatus !== 'served') {
+      return undefined;
+    }
+
+    let isActive = true;
+    let hasTimedOut = false;
+
+    const markActivity = () => {
+      lastClientActivityRef.current = Date.now();
+    };
+
+    const endClientSession = async () => {
+      if (!isActive || hasTimedOut) {
+        return;
+      }
+      hasTimedOut = true;
+
+      const releaseEndpoint = getTableReleaseEndpoint(tableId);
+      if (releaseEndpoint) {
+        try {
+          await publicApi.post(
+            releaseEndpoint,
+            trackedOrderId ? { orderId: trackedOrderId } : {},
+            { suppressGlobalErrorToast: true }
+          );
+        } catch {
+          // Ignore release errors to avoid blocking session cleanup.
+        }
+      }
+
+      if (!isActive) {
+        return;
+      }
+
+      setOrderPlaced(false);
+      setCart([]);
+      setIsCartOpen(false);
+      setOrderNotes('');
+      setPaymentMethod('cash');
+      setConfirmedOrderNumber('');
+      setTrackedOrderId('');
+      setTrackedOrderStatus('received');
+      setTrackedOrderDetails('');
+      toast.success(t('clientMenu.sessionTimeout', { defaultValue: 'Session closed due to inactivity.' }));
+    };
+
+    markActivity();
+
+    for (const eventName of CLIENT_ACTIVITY_EVENTS) {
+      window.addEventListener(eventName, markActivity, { passive: true });
+    }
+
+    const inactivityInterval = window.setInterval(() => {
+      const idleForMs = Date.now() - lastClientActivityRef.current;
+      if (idleForMs >= CLIENT_INACTIVITY_TIMEOUT_MS) {
+        endClientSession();
+      }
+    }, 1000);
+
+    return () => {
+      isActive = false;
+      window.clearInterval(inactivityInterval);
+      for (const eventName of CLIENT_ACTIVITY_EVENTS) {
+        window.removeEventListener(eventName, markActivity);
+      }
+    };
+  }, [orderPlaced, tableId, t, trackedOrderId, trackedOrderStatus]);
 
   const handlePlaceOrder = async () => {
     if (isPlacingOrder || cart.length === 0) {
