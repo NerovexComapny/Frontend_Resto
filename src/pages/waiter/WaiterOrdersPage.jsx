@@ -682,7 +682,7 @@ const WaiterOrdersPage = () => {
 
         {/* TAB: ALL ORDERS */}
         {!loading && activeTab === 'all-orders' && (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-4">
 
             {/* Filter */}
             <div className="flex overflow-x-auto no-scrollbar space-x-2 pb-2 items-center">
@@ -701,64 +701,66 @@ const WaiterOrdersPage = () => {
             </div>
 
             {/* Orders List */}
-            <AnimatePresence>
-              {filteredOrders.map((order) => (
-                <Motion.div
-                  layout
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  key={order.id}
-                  className={`bg-[#132845] border border-[#1e3a5f] rounded-2xl p-4 flex flex-col text-sm md:text-base ${order.status === 'served' ? 'opacity-60' : ''}`}
-                >
-                  <div className="flex justify-between items-center mb-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-[#0d1f3c] rounded-xl flex items-center justify-center font-black text-[#22d3ee] font-mono">
-                        {order.table}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <AnimatePresence>
+                {filteredOrders.map((order) => (
+                  <Motion.div
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    key={order.id}
+                    className={`bg-[#132845] border border-[#1e3a5f] rounded-2xl p-4 flex flex-col text-sm md:text-base ${order.status === 'served' ? 'opacity-60' : ''}`}
+                  >
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-[#0d1f3c] rounded-xl flex items-center justify-center font-black text-[#22d3ee] font-mono">
+                          {order.table}
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-slate-100 font-mono">
+                            {getOrderDisplayNumber(order.orderNumber, order.id, t)}
+                          </h3>
+                          <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                            <Clock className="w-3 h-3" /> {formatTimeAgo(order.createdAt, t)}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-bold text-slate-100 font-mono">
-                          {getOrderDisplayNumber(order.orderNumber, order.id, t)}
-                        </h3>
-                        <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                          <Clock className="w-3 h-3" /> {formatTimeAgo(order.createdAt, t)}
-                        </p>
-                      </div>
+
+                      <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg ${getStatusColor(order.status)}`}>
+                        {statusLabels[order.status] || order.status.replace('_', ' ')}
+                      </span>
                     </div>
 
-                    <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg ${getStatusColor(order.status)}`}>
-                      {statusLabels[order.status] || order.status.replace('_', ' ')}
-                    </span>
-                  </div>
+                    <p className="text-sm text-slate-400 mb-4 truncate">
+                      {order.items.map((item) => `${item.qty}x ${item.name}`).join(', ')}
+                    </p>
 
-                  <p className="text-sm text-slate-400 mb-4 truncate">
-                    {order.items.map((item) => `${item.qty}x ${item.name}`).join(', ')}
-                  </p>
-
-                  {/* Actions */}
-                  {order.status === 'ready' && (
-                    <button
-                      onClick={() => updateOrderStatus(order.id, 'served')}
-                      className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl transition-colors flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20"
-                    >
-                      <CheckCircle2 className="w-5 h-5" />
-                      {t('waiter.markServed')}
-                    </button>
-                  )}
-                  {order.status === 'new' && (
-                    <button
-                      onClick={() => updateOrderStatus(order.id, 'in_progress')}
-                      className="w-full py-3 bg-[#c9963a] text-[#0d1f3c] font-bold rounded-xl active:bg-amber-600 transition-colors flex justify-center items-center gap-2"
-                    >
-                      <ChefHat className="w-5 h-5" /> {t('waiter.sendToKitchen')}
-                    </button>
-                  )}
-                </Motion.div>
-              ))}
-            </AnimatePresence>
+                    {/* Actions */}
+                    {order.status === 'ready' && (
+                      <button
+                        onClick={() => updateOrderStatus(order.id, 'served')}
+                        className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl transition-colors flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20"
+                      >
+                        <CheckCircle2 className="w-5 h-5" />
+                        {t('waiter.markServed')}
+                      </button>
+                    )}
+                    {order.status === 'new' && (
+                      <button
+                        onClick={() => updateOrderStatus(order.id, 'in_progress')}
+                        className="w-full py-3 bg-[#c9963a] text-[#0d1f3c] font-bold rounded-xl active:bg-amber-600 transition-colors flex justify-center items-center gap-2"
+                      >
+                        <ChefHat className="w-5 h-5" /> {t('waiter.sendToKitchen')}
+                      </button>
+                    )}
+                  </Motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
 
             {filteredOrders.length === 0 && (
-              <div className="text-center py-12 text-slate-500">
+              <div className="text-center py-12 text-slate-500 bg-[#132845] border border-[#1e3a5f] rounded-2xl">
                 <p className="font-medium text-lg">{t('waiter.noOrdersFound')}</p>
               </div>
             )}
