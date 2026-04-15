@@ -10,6 +10,7 @@ import Calculator from 'lucide-react/dist/esm/icons/calculator';
 import Printer from 'lucide-react/dist/esm/icons/printer';
 import Download from 'lucide-react/dist/esm/icons/download';
 import { loadStripe } from '@stripe/stripe-js';
+import { jsPDF } from 'jspdf';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import { connectSocket } from '../../services/socket';
@@ -88,6 +89,100 @@ const normalizeOrder = (order) => {
     items: normalizedItems,
     totalAmount: Number(order?.totalAmount ?? computedTotal),
   };
+};
+
+const formatCurrencyTnd = (value) => `${Number(value || 0).toFixed(3)} TND`;
+
+const buildFallbackReceiptPdfBlob = (order) => {
+  const items = Array.isArray(order?.items) ? order.items : [];
+  const pageWidth = 226.77;
+  const estimatedHeight = Math.max(420, 280 + items.length * 34);
+  const margin = 14;
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'pt',
+    format: [pageWidth, estimatedHeight],
+    compress: true,
+  });
+
+  const ticketNumber = String(order?.orderNumber || order?._id || '').trim() || 'N/A';
+  const tableNumber = String(order?.table?.number ?? '-');
+  const printedAt = new Date().toLocaleString('fr-TN');
+  const subtotal = items.reduce((sum, item) => {
+    return sum + (Number(item?.price || 0) * Number(item?.quantity || 1));
+  }, 0);
+  const total = Number(order?.totalAmount ?? subtotal);
+
+  let y = margin + 2;
+
+  const centerText = (text, size = 10, bold = false) => {
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setFontSize(size);
+    doc.text(String(text || ''), pageWidth / 2, y, { align: 'center' });
+    y += size + 4;
+  };
+
+  const leftRightText = (left, right, size = 9, bold = false) => {
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setFontSize(size);
+    doc.text(String(left || ''), margin, y);
+    doc.text(String(right || ''), pageWidth - margin, y, { align: 'right' });
+    y += size + 4;
+  };
+
+  const divider = () => {
+    doc.setDrawColor(120);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 8;
+  };
+
+  centerText('Layali Carthage', 13, true);
+  centerText('Rue Zouhour Beni Khalled', 8);
+  centerText('+216 76 77 77 77', 8);
+  divider();
+
+  leftRightText('Table', tableNumber);
+  leftRightText('Ticket', ticketNumber);
+  leftRightText('Date', printedAt);
+  divider();
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('Item', margin, y);
+  doc.text('Qty', margin + 104, y, { align: 'right' });
+  doc.text('PU', margin + 143, y, { align: 'right' });
+  doc.text('Total', pageWidth - margin, y, { align: 'right' });
+  y += 8;
+  divider();
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+
+  items.forEach((item) => {
+    const name = String(item?.name || 'Item');
+    const qty = Number(item?.quantity || 1);
+    const unitPrice = Number(item?.price || 0);
+    const lineTotal = qty * unitPrice;
+    const wrappedName = doc.splitTextToSize(name, 92);
+
+    doc.text(wrappedName, margin, y);
+    doc.text(String(qty), margin + 104, y, { align: 'right' });
+    doc.text(formatCurrencyTnd(unitPrice), margin + 143, y, { align: 'right' });
+    doc.text(formatCurrencyTnd(lineTotal), pageWidth - margin, y, { align: 'right' });
+
+    y += Math.max(12, wrappedName.length * 9) + 2;
+  });
+
+  divider();
+  leftRightText('Sous-total', formatCurrencyTnd(subtotal), 9);
+  leftRightText('Taxe (0%)', formatCurrencyTnd(0), 9);
+  leftRightText('TOTAL', formatCurrencyTnd(total), 10, true);
+  divider();
+  centerText('Merci pour votre visite', 9, true);
+  centerText('Heureux de vous servir et de vous revoir', 8);
+
+  return doc.output('blob');
 };
 
 const extractApiErrorMessage = async (error, fallbackMessage) => {
@@ -261,13 +356,29 @@ const CashierPage = () => {
       || normalizedTableNumber.includes(normalizedQuery);
   });
 
-  const fetchReceiptPdfBlob = async (orderId) => {
-    const response = await api.get(`${paymentsEndpoint}/order/${orderId}/receipt/pdf`, {
-      responseType: 'blob',
-      suppressGlobalErrorToast: true,
-    });
+  const fetchReceiptPdfBlob = async (order) => {
+    const orderId = order?._id;
+    if (!orderId) {
+      throw new Error('Order ID is required to export receipt');
+    }
 
-    return response.data;
+    try {
+      const response = await api.get(`${paymentsEndpoint}/order/${orderId}/receipt/pdf`, {
+        responseType: 'blob',
+        suppressGlobalErrorToast: true,
+      });
+
+      return response.data;
+    } catch (error) {
+      const message = await extractApiErrorMessage(error, 'Unable to export receipt');
+      const isRouteMissing = error?.response?.status === 404 && /route\s+.+\s+not\s+found/i.test(message);
+
+      if (!isRouteMissing) {
+        throw error;
+      }
+
+      return buildFallbackReceiptPdfBlob(order);
+    }
   };
 
   const buildReceiptFileName = (order) => {
@@ -278,7 +389,7 @@ const CashierPage = () => {
   const downloadReceiptPdfForOrder = async (order) => {
     if (!order?._id) return;
 
-    const blob = await fetchReceiptPdfBlob(order._id);
+    const blob = await fetchReceiptPdfBlob(order);
     const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = blobUrl;
@@ -292,7 +403,7 @@ const CashierPage = () => {
   const openReceiptPrintPreview = async (order) => {
     if (!order?._id) return;
 
-    const blob = await fetchReceiptPdfBlob(order._id);
+    const blob = await fetchReceiptPdfBlob(order);
     const blobUrl = URL.createObjectURL(blob);
     const printWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer');
     if (!printWindow) {
