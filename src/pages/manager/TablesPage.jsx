@@ -240,18 +240,27 @@ const TablesPage = () => {
             <h2 className="text-2xl md:text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
               {t('manager.tables.title')}
             </h2>
-            <p className="text-slate-400 mt-1 capitalize text-sm">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1 translate-y-px"></span> {t('manager.tables.available')}
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 ml-4 mr-1 translate-y-px"></span> {t('manager.tables.occupied')}
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#7c6af7] ml-4 mr-1 translate-y-px"></span> {t('manager.tables.reserved')}
-            </p>
+            <div className="text-slate-400 mt-1 capitalize text-sm flex flex-wrap items-center gap-4">
+              <span className="inline-flex items-center gap-1">
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 translate-y-px"></span>
+                {t('manager.tables.available')}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 translate-y-px"></span>
+                {t('manager.tables.occupied')}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#7c6af7] translate-y-px"></span>
+                {t('manager.tables.reserved')}
+              </span>
+            </div>
           </div>
           
           <div className="flex flex-col sm:flex-row w-full sm:w-auto items-stretch sm:items-center gap-2">
             <button
               onClick={handleRegenerateAllQrs}
               disabled={isRegeneratingQrs}
-              className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-[#132845] hover:bg-[#1e3a5f] disabled:opacity-60 disabled:cursor-not-allowed text-slate-200 px-4 py-2.5 rounded-xl font-semibold transition-colors border border-[#1e3a5f]"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#132845] hover:bg-[#1e3a5f] disabled:opacity-60 disabled:cursor-not-allowed text-slate-200 px-4 py-2.5 rounded-xl font-semibold transition-colors border border-[#1e3a5f]"
             >
               <QrCode className="w-5 h-5" />
               <span>{isRegeneratingQrs ? t('manager.tables.regeneratingQr') : t('manager.tables.regenerateAllQr')}</span>
@@ -259,7 +268,7 @@ const TablesPage = () => {
 
             <button 
               onClick={() => setIsAddModalOpen(true)}
-              className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] px-4 py-2.5 rounded-xl font-semibold transition-colors"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] px-4 py-2.5 rounded-xl font-semibold transition-colors"
             >
               <Plus className="w-5 h-5" />
               <span>{t('manager.tables.addTable')}</span>
@@ -300,7 +309,7 @@ const TablesPage = () => {
                   className={`${styles.bg} border ${styles.border} rounded-2xl p-6 relative group transition-colors shadow-sm flex flex-col items-center justify-center aspect-[4/5]`}
                 >
                   {/* Actions (Hover) */}
-                  <div className="absolute top-3 right-3 flex space-x-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => openEditModal(table)}
                       className="p-2 bg-[#132845]/80 backdrop-blur-md border border-[#1e3a5f] text-slate-300 hover:text-[#7c6af7] rounded-xl transition-colors"
@@ -335,13 +344,13 @@ const TablesPage = () => {
                   </h3>
                   
                   {/* Capacity */}
-                  <div className="flex items-center space-x-1.5 text-slate-400 mb-6 bg-[#132845]/50 px-3 py-1 rounded-lg border border-[#1e3a5f]/50">
+                  <div className="flex items-center gap-1.5 text-slate-400 mb-6 bg-[#132845]/50 px-3 py-1 rounded-lg border border-[#1e3a5f]/50">
                     <Users className="w-4 h-4" />
                     <span className="text-sm font-medium">{table.capacity} {t('manager.tables.seats')}</span>
                   </div>
 
                   {/* Status Indicator */}
-                  <div className="mt-auto border-t border-[#1e3a5f]/50 w-full pt-4 flex items-center justify-center space-x-2">
+                  <div className="mt-auto border-t border-[#1e3a5f]/50 w-full pt-4 flex items-center justify-center gap-2">
                     <div className={`w-2.5 h-2.5 rounded-full ${styles.dot} shadow-[0_0_8px_rgba(0,0,0,0.5)] shadow-${styles.dot.split('-')[1]}-500/50`}></div>
                     <span className={`text-xs font-bold uppercase tracking-wider ${styles.text}`}>
                       {table.status}
@@ -508,7 +517,7 @@ const TablesPage = () => {
                 className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl w-full max-w-sm sm:max-w-md md:max-w-lg mx-4 max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl flex flex-col"
               >
                 <div className="flex justify-between items-center p-4 sm:p-6 bg-[#132845]/50 border-b border-[#1e3a5f]">
-                  <h3 className="text-lg font-bold text-slate-100 flex items-center space-x-2">
+                  <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
                     <QrCode className="w-5 h-5 text-[#7c6af7]" />
                     <span>{t('manager.tables.tableAccess', { number: selectedQrTable.number })}</span>
                   </h3>
@@ -532,12 +541,12 @@ const TablesPage = () => {
                 <div className="p-4 sm:p-6 border-t border-[#1e3a5f] bg-[#0f2040] flex gap-3">
                   <button
                     onClick={() => handleDownloadQR(selectedQrTable)}
-                    className="flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 bg-[#132845] border border-[#1e3a5f] hover:bg-[#1e3a5f] text-slate-300 rounded-xl font-medium transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-[#132845] border border-[#1e3a5f] hover:bg-[#1e3a5f] text-slate-300 rounded-xl font-medium transition-colors"
                   >
                     <Download className="w-4 h-4" />
                     <span>{t('manager.tables.saveQr')}</span>
                   </button>
-                  <button className="flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] rounded-xl font-bold transition-colors">
+                  <button className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] rounded-xl font-bold transition-colors">
                     <Printer className="w-4 h-4" />
                     <span>{t('manager.tables.printQr')}</span>
                   </button>

@@ -11,18 +11,38 @@ import ManagerLayout from '../../layouts/ManagerLayout';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
+import { useTranslation } from 'react-i18next';
 
 const getMenuBasePath = () => {
   const baseURL = String(api.defaults.baseURL || '');
   return /\/api\/?$/.test(baseURL) ? '/menu' : '/api/menu';
 };
 
-const getCategoryName = (category) => {
+const getLocalizedField = (field, language = 'en') => {
+  if (!field) return '';
+  if (typeof field === 'string') return field;
+  if (typeof field !== 'object') return '';
+
+  const lang = String(language || 'en').split('-')[0];
+  const priority =
+    lang === 'ar' ? ['ar', 'fr', 'en'] : lang === 'fr' ? ['fr', 'en', 'ar'] : ['en', 'fr', 'ar'];
+
+  for (const key of priority) {
+    const value = field?.[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value;
+    }
+  }
+
+  return '';
+};
+
+const getCategoryName = (category, language = 'en') => {
   if (!category) return '';
   if (typeof category === 'string') return category;
   if (typeof category === 'object') {
     if (typeof category.name === 'string') return category.name;
-    return category.name?.fr || category.name?.en || category.name?.ar || '';
+    return getLocalizedField(category.name, language);
   }
   return '';
 };
@@ -35,6 +55,129 @@ const getCategoryId = (category) => {
 };
 
 const MenuManagementPage = () => {
+  const { i18n } = useTranslation();
+  const currentLanguage = String(i18n.resolvedLanguage || i18n.language || 'en').split('-')[0];
+  const isArabic = currentLanguage === 'ar';
+  const text = useMemo(
+    () =>
+      isArabic
+        ? {
+            missingRestaurantContext: 'سياق المطعم غير متوفر',
+            categoryCreated: 'تم إنشاء التصنيف بنجاح',
+            categoryDeleted: 'تم حذف التصنيف بنجاح',
+            itemCreated: 'تم إنشاء العنصر بنجاح',
+            itemDeleted: 'تم حذف العنصر بنجاح',
+            createCategoryFirst: 'يرجى إنشاء تصنيف أولاً',
+            loadingMenuData: 'جاري تحميل بيانات القائمة...',
+            pageTitle: 'إدارة القائمة',
+            menuItems: 'عناصر القائمة',
+            categories: 'التصنيفات',
+            addCategory: 'إضافة تصنيف',
+            addItem: 'إضافة عنصر',
+            searchItems: 'ابحث في عناصر القائمة...',
+            allCategories: 'كل التصنيفات',
+            unnamedCategory: 'تصنيف بدون اسم',
+            itemsCount: 'عنصر',
+            noCategories: 'لا توجد تصنيفات بعد. أضف أول تصنيف.',
+            unnamedItem: 'عنصر بدون اسم',
+            uncategorized: 'بدون تصنيف',
+            prepTimeSuffix: 'دقيقة',
+            available: 'متاح',
+            noItemsMatch: 'لا توجد عناصر تطابق عوامل التصفية الحالية.',
+            addCategoryTitle: 'إضافة تصنيف',
+            nameFrench: 'الاسم (فرنسي)',
+            nameEnglish: 'الاسم (إنجليزي)',
+            nameArabic: 'الاسم (عربي)',
+            categoryFrPlaceholder: 'مثال: الأطباق الرئيسية',
+            categoryEnPlaceholder: 'مثال: Main Dishes',
+            categoryArPlaceholder: 'الاسم بالعربية',
+            displayOrder: 'ترتيب العرض',
+            cancel: 'إلغاء',
+            saving: 'جارٍ الحفظ...',
+            saveCategory: 'حفظ التصنيف',
+            addMenuItemTitle: 'إضافة عنصر قائمة',
+            uploadItemImage: 'انقر لرفع صورة العنصر',
+            uploadHint: 'PNG، JPG، WEBP حتى 5MB',
+            namesDescriptions: 'الأسماء والوصف',
+            french: 'الفرنسية',
+            english: 'الإنجليزية',
+            arabic: 'العربية',
+            itemNameFr: 'اسم العنصر (فرنسي)',
+            itemNameEn: 'اسم العنصر (إنجليزي)',
+            itemNameAr: 'اسم العنصر بالعربية',
+            descFr: 'الوصف (فرنسي)',
+            descEn: 'الوصف (إنجليزي)',
+            descAr: 'الوصف بالعربية',
+            itemDetails: 'تفاصيل العنصر',
+            category: 'التصنيف',
+            select: 'اختر...',
+            prepTimeMin: 'وقت التحضير (دقيقة)',
+            min: 'دقيقة',
+            price: 'السعر (دينار)',
+            vegetarianOption: 'خيار نباتي',
+            glutenFreeOption: 'خيار خالٍ من الغلوتين',
+            saveItem: 'حفظ العنصر',
+          }
+        : {
+            missingRestaurantContext: 'Missing restaurant context',
+            categoryCreated: 'Category created successfully',
+            categoryDeleted: 'Category deleted successfully',
+            itemCreated: 'Menu item created successfully',
+            itemDeleted: 'Menu item deleted successfully',
+            createCategoryFirst: 'Please create a category first',
+            loadingMenuData: 'Loading menu data...',
+            pageTitle: 'Menu Management',
+            menuItems: 'Menu Items',
+            categories: 'Categories',
+            addCategory: 'Add Category',
+            addItem: 'Add Item',
+            searchItems: 'Search menu items...',
+            allCategories: 'All Categories',
+            unnamedCategory: 'Unnamed Category',
+            itemsCount: 'Items',
+            noCategories: 'No categories yet. Add your first category.',
+            unnamedItem: 'Unnamed Item',
+            uncategorized: 'Uncategorized',
+            prepTimeSuffix: 'min',
+            available: 'Available',
+            noItemsMatch: 'No menu items match your current filters.',
+            addCategoryTitle: 'Add Category',
+            nameFrench: 'Name (French)',
+            nameEnglish: 'Name (English)',
+            nameArabic: 'Name (Arabic)',
+            categoryFrPlaceholder: 'e.g., Plats Principaux',
+            categoryEnPlaceholder: 'e.g., Main Dishes',
+            categoryArPlaceholder: 'Arabic name',
+            displayOrder: 'Display Order',
+            cancel: 'Cancel',
+            saving: 'Saving...',
+            saveCategory: 'Save Category',
+            addMenuItemTitle: 'Add Menu Item',
+            uploadItemImage: 'Click to upload item image',
+            uploadHint: 'PNG, JPG, WEBP up to 5MB',
+            namesDescriptions: 'Names & Descriptions',
+            french: 'French',
+            english: 'English',
+            arabic: 'Arabic',
+            itemNameFr: 'Item Name (Fr)',
+            itemNameEn: 'Item Name (En)',
+            itemNameAr: 'Arabic item name',
+            descFr: 'Description (Fr)',
+            descEn: 'Description (En)',
+            descAr: 'Arabic description',
+            itemDetails: 'Item Details',
+            category: 'Category',
+            select: 'Select...',
+            prepTimeMin: 'Prep Time (min)',
+            min: 'min',
+            price: 'Price (TND)',
+            vegetarianOption: 'Vegetarian Option',
+            glutenFreeOption: 'Gluten-Free Option',
+            saveItem: 'Save Item',
+          },
+    [isArabic]
+  );
+
   const [activeTab, setActiveTab] = useState('items'); // 'categories' or 'items'
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -162,12 +305,12 @@ const MenuManagementPage = () => {
 
   useEffect(() => {
     if (categoryFilter === 'All') return;
-    const exists = categories.some((category) => getCategoryName(category) === categoryFilter);
+    const exists = categories.some((category) => getCategoryName(category, currentLanguage) === categoryFilter);
 
     if (!exists) {
       setCategoryFilter('All');
     }
-  }, [categories, categoryFilter]);
+  }, [categories, categoryFilter, currentLanguage]);
 
   useEffect(() => {
     return () => {
@@ -191,7 +334,7 @@ const MenuManagementPage = () => {
     event.preventDefault();
 
     if (!restaurantId) {
-      toast.error('Missing restaurant context');
+      toast.error(text.missingRestaurantContext);
       return;
     }
 
@@ -221,7 +364,7 @@ const MenuManagementPage = () => {
 
       setIsCategoryModalOpen(false);
       resetCategoryForm();
-      toast.success('Category created successfully');
+      toast.success(text.categoryCreated);
     } catch (error) {
       toast.error(error.response?.data?.message || error.message);
     } finally {
@@ -240,7 +383,7 @@ const MenuManagementPage = () => {
         previousItems.filter((item) => getCategoryId(item.category) !== categoryId)
       );
 
-      toast.success('Category deleted successfully');
+      toast.success(text.categoryDeleted);
     } catch (error) {
       toast.error(error.response?.data?.message || error.message);
     }
@@ -265,7 +408,7 @@ const MenuManagementPage = () => {
     event.preventDefault();
 
     if (!restaurantId) {
-      toast.error('Missing restaurant context');
+      toast.error(text.missingRestaurantContext);
       return;
     }
 
@@ -326,7 +469,7 @@ const MenuManagementPage = () => {
 
       setIsItemModalOpen(false);
       resetItemForm();
-      toast.success('Menu item created successfully');
+      toast.success(text.itemCreated);
     } catch (error) {
       toast.error(error.response?.data?.message || error.message);
     } finally {
@@ -338,7 +481,7 @@ const MenuManagementPage = () => {
     try {
       await api.delete(`${menuBasePath}/items/${itemId}`);
       setMenuItems((previousItems) => previousItems.filter((item) => item._id !== itemId));
-      toast.success('Menu item deleted successfully');
+      toast.success(text.itemDeleted);
     } catch (error) {
       toast.error(error.response?.data?.message || error.message);
     }
@@ -387,13 +530,16 @@ const MenuManagementPage = () => {
 
   const filteredItems = useMemo(() => {
     return menuItems.filter((item) => {
-      const itemName = item?.name?.fr || item?.name?.en || item?.name?.ar || '';
-      const matchesSearch = itemName.toLowerCase().includes(searchQuery.toLowerCase());
-      const itemCategoryName = getCategoryName(item?.category);
+      const query = searchQuery.toLowerCase();
+      const itemNames = [item?.name?.fr, item?.name?.en, item?.name?.ar]
+        .filter((name) => typeof name === 'string')
+        .map((name) => name.toLowerCase());
+      const matchesSearch = itemNames.some((name) => name.includes(query));
+      const itemCategoryName = getCategoryName(item?.category, currentLanguage);
       const matchesCategory = categoryFilter === 'All' || itemCategoryName === categoryFilter;
       return matchesSearch && matchesCategory;
     });
-  }, [menuItems, searchQuery, categoryFilter]);
+  }, [menuItems, searchQuery, categoryFilter, currentLanguage]);
 
   return (
     <ManagerLayout>
@@ -401,7 +547,7 @@ const MenuManagementPage = () => {
         {/* Header & Tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
           <h2 className="text-2xl md:text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Menu Management
+            {text.pageTitle}
           </h2>
           
           <div className="flex p-1 bg-[#0d1f3c] rounded-lg border border-[#1e3a5f] w-fit">
@@ -413,7 +559,7 @@ const MenuManagementPage = () => {
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Menu Items
+              {text.menuItems}
             </button>
             <button
               onClick={() => setActiveTab('categories')}
@@ -423,14 +569,14 @@ const MenuManagementPage = () => {
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Categories
+              {text.categories}
             </button>
           </div>
         </div>
 
         {isLoading && (
           <div className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-4 text-sm text-slate-300">
-            Loading menu data...
+            {text.loadingMenuData}
           </div>
         )}
 
@@ -445,10 +591,10 @@ const MenuManagementPage = () => {
             <div className="flex justify-end">
               <button 
                 onClick={() => setIsCategoryModalOpen(true)}
-                className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] px-4 py-2 rounded-xl font-semibold transition-colors"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] px-4 py-2 rounded-xl font-semibold transition-colors"
               >
                 <Plus className="w-5 h-5" />
-                <span>Add Category</span>
+                <span>{text.addCategory}</span>
               </button>
             </div>
 
@@ -464,7 +610,7 @@ const MenuManagementPage = () => {
                   variants={cardVariants}
                   className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-6 relative group hover:border-[#1e5080] transition-colors"
                 >
-                  <div className="absolute top-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button className="p-2 bg-[#132845] text-slate-400 hover:text-[#c9963a] rounded-lg transition-colors">
                       <Edit2 className="w-4 h-4" />
                     </button>
@@ -476,18 +622,18 @@ const MenuManagementPage = () => {
                     </button>
                   </div>
                   
-                  <h3 className="text-xl font-bold text-slate-100 mb-2">{cat?.name?.fr || cat?.name?.en || cat?.name?.ar || 'Unnamed Category'}</h3>
+                  <h3 className="text-xl font-bold text-slate-100 mb-2">{getCategoryName(cat, currentLanguage) || text.unnamedCategory}</h3>
                   <p className="text-sm text-slate-400 mb-4">{cat?.name?.en || '-'} • {cat?.name?.ar || '-'}</p>
                   
                   <div className="flex items-center text-sm text-[#c9963a] font-medium">
                     <div className="w-2 h-2 rounded-full bg-[#c9963a] mr-2" />
-                    {categoryItemCounts[cat._id] || 0} Items
+                    {categoryItemCounts[cat._id] || 0} {text.itemsCount}
                   </div>
                 </Motion.div>
               ))}
               {!isLoading && categories.length === 0 && (
                 <div className="col-span-full bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-6 text-slate-400 text-center">
-                  No categories yet. Add your first category.
+                  {text.noCategories}
                 </div>
               )}
             </Motion.div>
@@ -509,7 +655,7 @@ const MenuManagementPage = () => {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                   <input 
                     type="text"
-                    placeholder="Search menu items..."
+                    placeholder={text.searchItems}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#c9963a] transition-colors"
@@ -522,9 +668,9 @@ const MenuManagementPage = () => {
                     onChange={(e) => setCategoryFilter(e.target.value)}
                     className="w-full pl-10 pr-8 py-2 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 appearance-none focus:outline-none focus:border-[#c9963a] transition-colors cursor-pointer"
                   >
-                    <option value="All">All Categories</option>
+                    <option value="All">{text.allCategories}</option>
                     {categories.map((cat) => (
-                      <option key={cat._id} value={getCategoryName(cat)}>{getCategoryName(cat)}</option>
+                      <option key={cat._id} value={getCategoryName(cat, currentLanguage)}>{getCategoryName(cat, currentLanguage)}</option>
                     ))}
                   </select>
                 </div>
@@ -533,7 +679,7 @@ const MenuManagementPage = () => {
               <button 
                 onClick={() => {
                   if (categories.length === 0) {
-                    toast.error('Please create a category first');
+                    toast.error(text.createCategoryFirst);
                     return;
                   }
                   setIsItemModalOpen(true);
@@ -542,10 +688,10 @@ const MenuManagementPage = () => {
                     category: previousForm.category || categories[0]?._id || '',
                   }));
                 }}
-                className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] px-4 py-2 rounded-xl font-semibold transition-colors"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] px-4 py-2 rounded-xl font-semibold transition-colors"
               >
                 <Plus className="w-5 h-5" />
-                <span>Add Item</span>
+                <span>{text.addItem}</span>
               </button>
             </div>
 
@@ -565,11 +711,11 @@ const MenuManagementPage = () => {
                   {/* Image Placeholder */}
                   <div className="h-40 bg-[#132845] relative flex items-center justify-center border-b border-[#1e3a5f]">
                     {item.image ? (
-                      <img src={item.image} alt={item?.name?.fr || 'Menu item'} className="w-full h-full object-cover" />
+                      <img src={item.image} alt={getLocalizedField(item?.name, currentLanguage) || text.menuItems} className="w-full h-full object-cover" />
                     ) : (
                       <ImageIcon className="w-10 h-10 text-slate-600" />
                     )}
-                    <div className="absolute top-3 right-3 flex space-x-2">
+                    <div className="absolute top-3 right-3 flex gap-2">
                        <button className="p-2 bg-black/50 backdrop-blur-sm text-slate-200 hover:text-[#c9963a] rounded-lg transition-colors">
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -585,21 +731,21 @@ const MenuManagementPage = () => {
                   {/* Content */}
                   <div className="p-5 flex-1 flex flex-col">
                     <div className="flex justify-between items-start mb-2">
-                      <h3 className="text-lg font-bold text-slate-100">{item?.name?.fr || item?.name?.en || item?.name?.ar || 'Unnamed Item'}</h3>
+                      <h3 className="text-lg font-bold text-slate-100">{getLocalizedField(item?.name, currentLanguage) || text.unnamedItem}</h3>
                       <span className="font-bold text-[#c9963a]">{Number(item.price || 0).toFixed(2)} TND</span>
                     </div>
                     
                     <div className="mb-4">
                       <span className="inline-block px-2 py-1 bg-[#132845] border border-[#1e3a5f] text-xs text-slate-400 rounded-md">
-                        {getCategoryName(item.category) || 'Uncategorized'}
+                        {getCategoryName(item.category, currentLanguage) || text.uncategorized}
                       </span>
                       <span className="inline-block ml-2 text-xs text-slate-500">
-                        ⏱ {item.preparationTime || '-'} min
+                        ⏱ {item.preparationTime || '-'} {text.prepTimeSuffix}
                       </span>
                     </div>
                     
                     <div className="mt-auto pt-4 border-t border-[#1e3a5f] flex items-center justify-between">
-                      <span className="text-sm font-medium text-slate-400">Available</span>
+                      <span className="text-sm font-medium text-slate-400">{text.available}</span>
                       
                       {/* Custom Toggle Switch */}
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -617,7 +763,7 @@ const MenuManagementPage = () => {
               ))}
               {!isLoading && filteredItems.length === 0 && (
                 <div className="col-span-full bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-6 text-slate-400 text-center">
-                  No menu items match your current filters.
+                  {text.noItemsMatch}
                 </div>
               )}
             </Motion.div>
@@ -649,7 +795,7 @@ const MenuManagementPage = () => {
               className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md md:max-w-lg mx-4 max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl"
             >
               <div className="flex justify-between items-center mb-6 border-b border-[#1e3a5f]/50 pb-4">
-                <h3 className="text-2xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>Add Category</h3>
+                <h3 className="text-2xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>{text.addCategoryTitle}</h3>
                 <button 
                   onClick={() => {
                     setIsCategoryModalOpen(false);
@@ -663,11 +809,11 @@ const MenuManagementPage = () => {
 
               <form className="space-y-4" onSubmit={handleCreateCategory}>
                 <div>
-                  <label htmlFor="cat-fr" className="block text-sm font-medium text-slate-400 mb-1.5">Name (French)</label>
+                  <label htmlFor="cat-fr" className="block text-sm font-medium text-slate-400 mb-1.5">{text.nameFrench}</label>
                   <input 
                     type="text" 
                     id="cat-fr"
-                    placeholder="e.g., Plats Principaux"
+                    placeholder={text.categoryFrPlaceholder}
                     value={categoryForm.fr}
                     onChange={(e) => setCategoryForm((previousForm) => ({ ...previousForm, fr: e.target.value }))}
                     required
@@ -675,11 +821,11 @@ const MenuManagementPage = () => {
                   />
                 </div>
                 <div>
-                  <label htmlFor="cat-en" className="block text-sm font-medium text-slate-400 mb-1.5">Name (English)</label>
+                  <label htmlFor="cat-en" className="block text-sm font-medium text-slate-400 mb-1.5">{text.nameEnglish}</label>
                   <input 
                     type="text" 
                     id="cat-en"
-                    placeholder="e.g., Main Dishes"
+                    placeholder={text.categoryEnPlaceholder}
                     value={categoryForm.en}
                     onChange={(e) => setCategoryForm((previousForm) => ({ ...previousForm, en: e.target.value }))}
                     required
@@ -687,11 +833,11 @@ const MenuManagementPage = () => {
                   />
                 </div>
                 <div>
-                  <label htmlFor="cat-ar" className="block text-sm font-medium text-slate-400 mb-1.5">Name (Arabic)</label>
+                  <label htmlFor="cat-ar" className="block text-sm font-medium text-slate-400 mb-1.5">{text.nameArabic}</label>
                   <input 
                     type="text" 
                     id="cat-ar"
-                    placeholder="Arabic name"
+                    placeholder={text.categoryArPlaceholder}
                     dir="rtl"
                     value={categoryForm.ar}
                     onChange={(e) => setCategoryForm((previousForm) => ({ ...previousForm, ar: e.target.value }))}
@@ -701,7 +847,7 @@ const MenuManagementPage = () => {
                 </div>
                 
                 <div className="pt-2">
-                  <label htmlFor="cat-order" className="block text-sm font-medium text-slate-400 mb-1.5">Display Order</label>
+                  <label htmlFor="cat-order" className="block text-sm font-medium text-slate-400 mb-1.5">{text.displayOrder}</label>
                   <input 
                     type="number" 
                     id="cat-order"
@@ -720,14 +866,14 @@ const MenuManagementPage = () => {
                     }}
                     className="flex-1 py-3 px-4 bg-[#132845] hover:bg-[#1e3a5f] text-slate-300 rounded-xl font-medium transition-colors"
                   >
-                    Cancel
+                    {text.cancel}
                   </button>
                   <button 
                     type="submit"
                     disabled={isSubmittingCategory}
                     className="flex-1 py-3 px-4 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] rounded-xl font-semibold transition-colors"
                   >
-                    {isSubmittingCategory ? 'Saving...' : 'Save Category'}
+                    {isSubmittingCategory ? text.saving : text.saveCategory}
                   </button>
                 </div>
               </form>
@@ -758,7 +904,7 @@ const MenuManagementPage = () => {
               className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl w-full max-w-sm sm:max-w-md md:max-w-lg mx-4 relative z-10 shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center p-4 sm:p-6 border-b border-[#1e3a5f]">
-                <h3 className="text-2xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>Add Menu Item</h3>
+                <h3 className="text-2xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>{text.addMenuItemTitle}</h3>
                 <button 
                   onClick={() => {
                     setIsItemModalOpen(false);
@@ -782,8 +928,8 @@ const MenuManagementPage = () => {
                         <div className="p-3 bg-[#0d1f3c] rounded-full mb-3 group-hover:scale-110 transition-transform">
                           <ImageIcon className="w-6 h-6 text-slate-400 group-hover:text-[#c9963a] transition-colors" />
                         </div>
-                        <span className="text-sm font-medium text-slate-300">Click to upload item image</span>
-                        <span className="text-xs text-slate-500 mt-1">PNG, JPG, WEBP up to 5MB</span>
+                        <span className="text-sm font-medium text-slate-300">{text.uploadItemImage}</span>
+                        <span className="text-xs text-slate-500 mt-1">{text.uploadHint}</span>
                       </>
                     )}
                   </label>
@@ -803,16 +949,16 @@ const MenuManagementPage = () => {
                       <div>
                         <h4 className="text-sm font-bold text-slate-100 mb-4 flex items-center">
                           <span className="w-2 h-2 rounded-full bg-[#c9963a] mr-2"></span>
-                          Names & Descriptions
+                          {text.namesDescriptions}
                         </h4>
                         
                         <div className="space-y-4">
                           {/* French */}
                           <div className="p-4 bg-[#132845]/50 border border-[#1e3a5f] rounded-xl space-y-3">
-                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">French</span>
+                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{text.french}</span>
                             <input
                               type="text"
-                              placeholder="Item Name (Fr)"
+                              placeholder={text.itemNameFr}
                               value={itemForm.name.fr}
                               onChange={(e) =>
                                 setItemForm((previousForm) => ({
@@ -825,7 +971,7 @@ const MenuManagementPage = () => {
                             />
                             <textarea
                               rows="2"
-                              placeholder="Description (Fr)"
+                              placeholder={text.descFr}
                               value={itemForm.description.fr}
                               onChange={(e) =>
                                 setItemForm((previousForm) => ({
@@ -839,10 +985,10 @@ const MenuManagementPage = () => {
                           
                           {/* English */}
                           <div className="p-4 bg-[#132845]/50 border border-[#1e3a5f] rounded-xl space-y-3">
-                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">English</span>
+                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{text.english}</span>
                             <input
                               type="text"
-                              placeholder="Item Name (En)"
+                              placeholder={text.itemNameEn}
                               value={itemForm.name.en}
                               onChange={(e) =>
                                 setItemForm((previousForm) => ({
@@ -855,7 +1001,7 @@ const MenuManagementPage = () => {
                             />
                             <textarea
                               rows="2"
-                              placeholder="Description (En)"
+                              placeholder={text.descEn}
                               value={itemForm.description.en}
                               onChange={(e) =>
                                 setItemForm((previousForm) => ({
@@ -870,12 +1016,12 @@ const MenuManagementPage = () => {
                           {/* Arabic */}
                           <div className="p-4 bg-[#132845]/50 border border-[#1e3a5f] rounded-xl space-y-3">
                             <div className="flex justify-end">
-                              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Arabic</span>
+                              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{text.arabic}</span>
                             </div>
                             <input
                               type="text"
                               dir="rtl"
-                              placeholder="Arabic item name"
+                              placeholder={text.itemNameAr}
                               value={itemForm.name.ar}
                               onChange={(e) =>
                                 setItemForm((previousForm) => ({
@@ -889,7 +1035,7 @@ const MenuManagementPage = () => {
                             <textarea
                               rows="2"
                               dir="rtl"
-                              placeholder="Arabic description"
+                              placeholder={text.descAr}
                               value={itemForm.description.ar}
                               onChange={(e) =>
                                 setItemForm((previousForm) => ({
@@ -909,14 +1055,14 @@ const MenuManagementPage = () => {
                       <div>
                         <h4 className="text-sm font-bold text-slate-100 mb-4 flex items-center">
                           <span className="w-2 h-2 rounded-full bg-[#0891b2] mr-2"></span>
-                          Item Details
+                          {text.itemDetails}
                         </h4>
                         
                         <div className="space-y-5">
                           {/* Category & Prep Time */}
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-xs font-medium text-slate-400 mb-1.5">Category</label>
+                              <label className="block text-xs font-medium text-slate-400 mb-1.5">{text.category}</label>
                               <select
                                 value={itemForm.category}
                                 onChange={(e) =>
@@ -928,14 +1074,14 @@ const MenuManagementPage = () => {
                                 required
                                 className="w-full px-4 py-2.5 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-[#c9963a] transition-all cursor-pointer"
                               >
-                                <option value="" disabled hidden>Select...</option>
+                                <option value="" disabled hidden>{text.select}</option>
                                 {categories.map((cat) => (
-                                  <option key={cat._id} value={cat._id}>{getCategoryName(cat)}</option>
+                                  <option key={cat._id} value={cat._id}>{getCategoryName(cat, currentLanguage)}</option>
                                 ))}
                               </select>
                             </div>
                             <div>
-                               <label className="block text-xs font-medium text-slate-400 mb-1.5">Prep Time (min)</label>
+                               <label className="block text-xs font-medium text-slate-400 mb-1.5">{text.prepTimeMin}</label>
                               <div className="relative">
                                 <input
                                   type="number"
@@ -949,14 +1095,14 @@ const MenuManagementPage = () => {
                                   }
                                   className="w-full px-4 py-2.5 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-[#c9963a] transition-all"
                                 />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">min</span>
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">{text.min}</span>
                               </div>
                             </div>
                           </div>
 
                           {/* Pricing */}
                           <div>
-                            <label className="block text-xs font-medium text-slate-400 mb-1.5">Price (TND)</label>
+                            <label className="block text-xs font-medium text-slate-400 mb-1.5">{text.price}</label>
                             <div className="relative">
                               <input
                                 type="number"
@@ -979,7 +1125,7 @@ const MenuManagementPage = () => {
                           {/* Dietary Toggles */}
                           <div className="p-4 bg-[#132845]/50 border border-[#1e3a5f] rounded-xl space-y-4">
                             <label className="flex items-center justify-between cursor-pointer">
-                              <span className="text-sm font-medium text-slate-300">Vegetarian Option</span>
+                              <span className="text-sm font-medium text-slate-300">{text.vegetarianOption}</span>
                               <div className="relative flex items-center justify-center w-5 h-5">
                                 <input
                                   type="checkbox"
@@ -997,7 +1143,7 @@ const MenuManagementPage = () => {
                             </label>
                             
                             <label className="flex items-center justify-between cursor-pointer">
-                              <span className="text-sm font-medium text-slate-300">Gluten-Free Option</span>
+                              <span className="text-sm font-medium text-slate-300">{text.glutenFreeOption}</span>
                               <div className="relative flex items-center justify-center w-5 h-5">
                                 <input
                                   type="checkbox"
@@ -1031,7 +1177,7 @@ const MenuManagementPage = () => {
                   }}
                   className="py-2.5 px-6 bg-[#0d1f3c] border border-[#1e3a5f] hover:bg-[#1e3a5f] text-slate-300 rounded-xl font-medium transition-colors"
                 >
-                  Cancel
+                  {text.cancel}
                 </button>
                 <button 
                   type="submit"
@@ -1039,7 +1185,7 @@ const MenuManagementPage = () => {
                   disabled={isSubmittingItem}
                   className="py-2.5 px-8 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] rounded-xl font-bold transition-colors shadow-lg shadow-[#c9963a]-500/20"
                 >
-                  {isSubmittingItem ? 'Saving...' : 'Save Item'}
+                  {isSubmittingItem ? text.saving : text.saveItem}
                 </button>
               </div>
             </Motion.div>

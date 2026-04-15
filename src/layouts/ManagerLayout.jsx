@@ -20,7 +20,9 @@ const ManagerLayout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const currentLanguage = String(i18n.resolvedLanguage || i18n.language || 'en').split('-')[0];
+  const isRtl = i18n.dir(currentLanguage) === 'rtl';
 
   const navLinks = [
     { name: t('manager.layout.dashboard'), path: '/manager/dashboard', icon: LayoutDashboard },
@@ -42,15 +44,19 @@ const ManagerLayout = ({ children }) => {
 
   const getLinkClasses = (path) => {
     const isActive = location.pathname === path;
-    return `flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${
+    return `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${isRtl ? 'text-right' : 'text-left'} ${
       isActive 
-        ? 'bg-[#7c6af7]/10 text-[#7c6af7] border-l-4 border-[#7c6af7] pl-3 shadow-inner' 
-        : 'text-slate-400 hover:text-slate-200 hover:bg-[#132845] border-l-4 border-transparent pl-3'
+        ? (isRtl
+          ? 'bg-[#7c6af7]/10 text-[#7c6af7] border-r-4 border-[#7c6af7] pr-3 shadow-inner'
+          : 'bg-[#7c6af7]/10 text-[#7c6af7] border-l-4 border-[#7c6af7] pl-3 shadow-inner')
+        : (isRtl
+          ? 'text-slate-400 hover:text-slate-200 hover:bg-[#132845] border-r-4 border-transparent pr-3'
+          : 'text-slate-400 hover:text-slate-200 hover:bg-[#132845] border-l-4 border-transparent pl-3')
     }`;
   };
 
   return (
-    <div className="min-h-screen bg-[#0a1628] text-slate-100 flex font-sans">
+    <div dir={isRtl ? 'rtl' : 'ltr'} lang={currentLanguage} className="min-h-screen bg-[#0a1628] text-slate-100 flex font-sans">
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <Motion.div 
@@ -64,10 +70,12 @@ const ManagerLayout = ({ children }) => {
 
       {/* Sidebar */}
       <aside className={`fixed lg:sticky top-0 left-0 z-50 h-screen w-72 transform transition-transform duration-300 lg:translate-x-0 bg-[#0d1f3c] border-r border-[#1e3a5f] flex flex-col ${
-        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        isRtl
+          ? `right-0 left-auto border-r-0 border-l border-[#1e3a5f] ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'} lg:translate-x-0`
+          : `left-0 right-auto border-r border-[#1e3a5f] ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`
       }`}>
         {/* Logo */}
-        <div className="p-6 flex items-center space-x-3">
+        <div className="p-6 flex items-center gap-3">
           <img src={logo} alt="ليالي قرطاج" className="w-12 h-12 object-contain" />
           <div>
             <h1 className="text-xl font-bold text-[#7c6af7]" 
@@ -103,7 +111,7 @@ const ManagerLayout = ({ children }) => {
 
         {/* User Profile & Logout */}
         <div className="p-4 border-t border-[#1e3a5f] bg-[#0a1628]/50">
-          <div className="flex items-center space-x-3 px-4 py-3 mb-2 rounded-xl bg-[#132845] border border-[#1e3a5f]">
+          <div className="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl bg-[#132845] border border-[#1e3a5f]">
             <div className="w-10 h-10 rounded-xl bg-[#7c6af7]/20 text-[#7c6af7] flex items-center justify-center font-bold text-xl uppercase">
               {user?.name ? user.name.charAt(0) : 'M'}
             </div>
@@ -114,7 +122,7 @@ const ManagerLayout = ({ children }) => {
           </div>
           <button 
             onClick={handleLogout}
-            className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent transition-all duration-200"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent transition-all duration-200"
           >
             <LogOut className="w-5 h-5" />
             <span className="font-bold tracking-wider uppercase text-sm">{t('common.logout')}</span>
@@ -126,7 +134,7 @@ const ManagerLayout = ({ children }) => {
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Mobile Header */}
         <header className="flex lg:hidden items-center justify-between p-4 bg-[#0d1f3c] border-b border-[#1e3a5f] sticky top-0 z-30">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <img src={logo} alt="ليالي قرطاج" className="w-8 h-8 object-contain" />
             <h1 className="text-xl font-bold text-[#7c6af7]" style={{ fontFamily: "'Playfair Display', serif" }} dir="rtl">
               ليالي قرطاج

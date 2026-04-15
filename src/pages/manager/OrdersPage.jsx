@@ -264,7 +264,7 @@ const OrdersPage = () => {
             {t('manager.orders.title')}
           </h2>
 
-          <div className="w-full sm:w-auto flex items-center justify-center sm:justify-start space-x-2 bg-[#0d1f3c] px-4 py-2 border border-[#1e3a5f] rounded-xl text-sm font-medium text-[#7c6af7]">
+          <div className="w-full sm:w-auto flex items-center justify-center sm:justify-start gap-2 bg-[#0d1f3c] px-4 py-2 border border-[#1e3a5f] rounded-xl text-sm font-medium text-[#7c6af7]">
             <div className="w-2 h-2 rounded-full bg-[#7c6af7] animate-pulse"></div>
             <span>{t('manager.orders.monitoring', { count: orders.length })}</span>
           </div>
@@ -367,7 +367,7 @@ const OrdersPage = () => {
                   <div className="p-5 border-b border-[#1e3a5f] flex justify-between items-start bg-[#132845]/30">
                     <div>
                       <h3 className="text-xl font-bold text-[#7c6af7] mb-1">{order.orderNumber}</h3>
-                      <div className="flex items-center text-xs text-slate-400 font-medium space-x-1.5">
+                      <div className="flex items-center text-xs text-slate-400 font-medium gap-1.5">
                         <Clock className="w-3.5 h-3.5" />
                         <span>{getTimeElapsed(order.createdAt)}</span>
                       </div>
@@ -389,14 +389,14 @@ const OrdersPage = () => {
                   </div>
 
                   <div className="p-5 flex-1 flex flex-col">
-                    <div className="flex items-center space-x-2 text-slate-200 font-semibold mb-4 bg-[#132845] p-3 rounded-xl border border-[#1e3a5f]">
+                    <div className="flex items-center gap-2 text-slate-200 font-semibold mb-4 bg-[#132845] p-3 rounded-xl border border-[#1e3a5f]">
                       <Utensils className="w-5 h-5 text-[#7c6af7]" />
                       <span>{t('common.table')} {order.table.number}</span>
                     </div>
 
                     <div className="space-y-3 flex-1">
                       {order.items.map((item, index) => (
-                        <div key={index} className="flex items-center space-x-2 text-sm">
+                        <div key={index} className="flex items-center gap-2 text-sm">
                           <span className="w-6 h-6 rounded-md bg-[#132845] border border-[#1e3a5f] flex items-center justify-center text-slate-300 font-medium">
                             {item.quantity}
                           </span>

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import Search from 'lucide-react/dist/esm/icons/search';
 import Filter from 'lucide-react/dist/esm/icons/filter';
@@ -10,6 +10,7 @@ import Shield from 'lucide-react/dist/esm/icons/shield';
 import Phone from 'lucide-react/dist/esm/icons/phone';
 import Mail from 'lucide-react/dist/esm/icons/mail';
 import User from 'lucide-react/dist/esm/icons/user';
+import { useTranslation } from 'react-i18next';
 import ManagerLayout from '../../layouts/ManagerLayout';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
@@ -30,6 +31,94 @@ const getRoleStyle = (role) => {
 };
 
 const StaffPage = () => {
+  const { i18n } = useTranslation();
+  const currentLanguage = String(i18n.resolvedLanguage || i18n.language || 'en').split('-')[0];
+  const isArabic = currentLanguage === 'ar';
+  const text = useMemo(() => (
+    isArabic
+      ? {
+          loadFailed: 'فشل تحميل فريق العمل',
+          title: 'إدارة الفريق',
+          subtitle: 'إدارة موظفي المطعم والأدوار',
+          addStaff: 'إضافة موظف',
+          searchPlaceholder: 'ابحث بالاسم أو البريد...',
+          allRoles: 'كل الأدوار',
+          manager: 'مدير',
+          waiter: 'نادل',
+          cashier: 'أمين صندوق',
+          cook: 'طباخ',
+          employee: 'الموظف',
+          contact: 'التواصل',
+          role: 'الدور',
+          status: 'الحالة',
+          actions: 'الإجراءات',
+          active: 'نشط',
+          inactive: 'غير نشط',
+          edit: 'تعديل',
+          deactivateDelete: 'إيقاف/حذف',
+          noStaff: 'لا يوجد موظفون مطابقون للفلاتر',
+          editStaff: 'تعديل موظف',
+          addStaffModal: 'إضافة موظف',
+          fullName: 'الاسم الكامل',
+          fullNamePlaceholder: 'مثال: محمد علي',
+          phoneNumber: 'رقم الهاتف',
+          phonePlaceholder: '+216XX XXXXXX',
+          emailAddress: 'البريد الإلكتروني',
+          emailPlaceholder: 'staff@restaurant.com',
+          tempPassword: 'كلمة مرور مؤقتة',
+          tempPasswordPlaceholder: '********',
+          tempPasswordHint: 'سيُطلب من الموظف تغيير كلمة المرور عند أول تسجيل دخول.',
+          assignRole: 'تعيين الدور',
+          cancel: 'إلغاء',
+          saveChanges: 'حفظ التعديلات',
+          createAccount: 'إنشاء حساب',
+        }
+      : {
+          loadFailed: 'Failed to load staff',
+          title: 'Staff Management',
+          subtitle: 'Manage your restaurant personnel and roles.',
+          addStaff: 'Add Staff Member',
+          searchPlaceholder: 'Search staff by name or email...',
+          allRoles: 'All Roles',
+          manager: 'Manager',
+          waiter: 'Waiter',
+          cashier: 'Cashier',
+          cook: 'Cook',
+          employee: 'Employee',
+          contact: 'Contact',
+          role: 'Role',
+          status: 'Status',
+          actions: 'Actions',
+          active: 'Active',
+          inactive: 'Inactive',
+          edit: 'Edit',
+          deactivateDelete: 'Deactivate/Delete',
+          noStaff: 'No staff members found matching your filters.',
+          editStaff: 'Edit Staff Member',
+          addStaffModal: 'Add Staff Member',
+          fullName: 'Full Name',
+          fullNamePlaceholder: 'e.g. John Doe',
+          phoneNumber: 'Phone Number',
+          phonePlaceholder: '+216XX XXXXXX',
+          emailAddress: 'Email Address',
+          emailPlaceholder: 'staff@restaurant.com',
+          tempPassword: 'Temporary Password',
+          tempPasswordPlaceholder: '********',
+          tempPasswordHint: 'The staff member will be prompted to change this on their first login.',
+          assignRole: 'Assign Role',
+          cancel: 'Cancel',
+          saveChanges: 'Save Changes',
+          createAccount: 'Create Account',
+        }
+  ), [isArabic]);
+
+  const roleLabels = useMemo(() => ({
+    manager: text.manager,
+    waiter: text.waiter,
+    cashier: text.cashier,
+    cook: text.cook,
+  }), [text]);
+
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -77,7 +166,7 @@ const StaffPage = () => {
         }
       } catch (error) {
         if (isActive) {
-          toast.error(error.response?.data?.message || 'Failed to load staff');
+          toast.error(error.response?.data?.message || text.loadFailed);
           setStaff([]);
         }
       } finally {
@@ -92,7 +181,7 @@ const StaffPage = () => {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [text.loadFailed]);
 
   const filteredStaff = staff.filter(s => {
     const name = String(s?.name || '');
@@ -121,17 +210,17 @@ const StaffPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
           <div>
             <h2 className="text-2xl md:text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Staff Management
+              {text.title}
             </h2>
-            <p className="text-slate-400 mt-1">Manage your restaurant personnel and roles.</p>
+            <p className="text-slate-400 mt-1">{text.subtitle}</p>
           </div>
           
           <button 
             onClick={() => handleOpenModal()}
-            className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] px-4 py-2.5 rounded-xl font-semibold transition-colors"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] px-4 py-2.5 rounded-xl font-semibold transition-colors"
           >
             <Plus className="w-5 h-5" />
-            <span>Add Staff Member</span>
+            <span>{text.addStaff}</span>
           </button>
         </div>
 
@@ -141,7 +230,7 @@ const StaffPage = () => {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
             <input 
               type="text" 
-              placeholder="Search staff by name or email..."
+              placeholder={text.searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-2.5 bg-[#0d1f3c] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-[#c9963a] focus:ring-1 focus:ring-amber-500 transition-colors"
@@ -154,11 +243,11 @@ const StaffPage = () => {
               onChange={(e) => setFilterRole(e.target.value)}
               className="w-full pl-12 pr-4 py-2.5 bg-[#0d1f3c] border border-[#1e3a5f] rounded-xl text-slate-100 outline-none focus:border-[#c9963a] focus:ring-1 focus:ring-amber-500 transition-colors appearance-none cursor-pointer"
             >
-              <option value="all">All Roles</option>
-              <option value="manager">Manager</option>
-              <option value="waiter">Waiter</option>
-              <option value="cashier">Cashier</option>
-              <option value="cook">Cook</option>
+              <option value="all">{text.allRoles}</option>
+              <option value="manager">{text.manager}</option>
+              <option value="waiter">{text.waiter}</option>
+              <option value="cashier">{text.cashier}</option>
+              <option value="cook">{text.cook}</option>
             </select>
           </div>
         </Motion.div>
@@ -169,11 +258,11 @@ const StaffPage = () => {
             <table className="w-full text-left text-xs md:text-sm">
               <thead className="bg-[#0d1f3c] text-slate-400 text-xs uppercase font-semibold">
                 <tr>
-                  <th className="px-3 md:px-6 py-4">Employee</th>
-                  <th className="px-3 md:px-6 py-4">Contact</th>
-                  <th className="px-3 md:px-6 py-4">Role</th>
-                  <th className="hidden md:table-cell px-3 md:px-6 py-4">Status</th>
-                  <th className="px-3 md:px-6 py-4 text-right">Actions</th>
+                  <th className="px-3 md:px-6 py-4">{text.employee}</th>
+                  <th className="px-3 md:px-6 py-4">{text.contact}</th>
+                  <th className="px-3 md:px-6 py-4">{text.role}</th>
+                  <th className="hidden md:table-cell px-3 md:px-6 py-4">{text.status}</th>
+                  <th className="px-3 md:px-6 py-4 text-right">{text.actions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1e3a5f]">
@@ -186,7 +275,7 @@ const StaffPage = () => {
                       className="hover:bg-[#0d1f3c]/50 transition-colors group"
                     >
                       <td className="px-3 md:px-6 py-4">
-                        <div className="flex items-center space-x-4">
+                        <div className="flex items-center gap-4">
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${styles.avatar}`}>
                             {getInitials(person.name)}
                           </div>
@@ -198,11 +287,11 @@ const StaffPage = () => {
                       </td>
                       <td className="px-3 md:px-6 py-4">
                         <div className="space-y-1">
-                          <div className="flex items-center space-x-2 text-slate-300">
+                          <div className="flex items-center gap-2 text-slate-300">
                             <Mail className="w-3.5 h-3.5 text-slate-500" />
                             <span>{person.email}</span>
                           </div>
-                          <div className="hidden md:flex items-center space-x-2 text-slate-400 text-xs">
+                          <div className="hidden md:flex items-center gap-2 text-slate-400 text-xs">
                             <Phone className="w-3.5 h-3.5 text-slate-500" />
                             <span>{person.phone}</span>
                           </div>
@@ -210,26 +299,26 @@ const StaffPage = () => {
                       </td>
                       <td className="px-3 md:px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${styles.badge}`}>
-                          {person.role}
+                          {roleLabels[person.role] || person.role}
                         </span>
                       </td>
                       <td className="hidden md:table-cell px-3 md:px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${person.isActive ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20'}`}>
-                          {person.isActive ? 'Active' : 'Inactive'}
+                          {person.isActive ? text.active : text.inactive}
                         </span>
                       </td>
                       <td className="px-3 md:px-6 py-4 text-right">
-                        <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={() => handleOpenModal(person)}
                             className="p-2 bg-[#0d1f3c] border border-[#1e3a5f] text-slate-400 hover:text-[#c9963a] rounded-xl transition-colors"
-                            title="Edit"
+                            title={text.edit}
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button 
                             className="p-2 bg-[#0d1f3c] border border-[#1e3a5f] text-slate-400 hover:text-red-500 rounded-xl transition-colors"
-                            title="Deactivate/Delete"
+                            title={text.deactivateDelete}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -241,7 +330,7 @@ const StaffPage = () => {
                 {filteredStaff.length === 0 && (
                   <tr>
                     <td colSpan="5" className="px-3 md:px-6 py-12 text-center text-slate-400">
-                      No staff members found matching your filters.
+                      {text.noStaff}
                     </td>
                   </tr>
                 )}
@@ -264,9 +353,9 @@ const StaffPage = () => {
                 className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl w-full max-w-sm sm:max-w-md md:max-w-lg mx-4 relative z-10 shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto"
               >
                 <div className="flex justify-between items-center p-4 sm:p-6 border-b border-[#1e3a5f]">
-                  <h3 className="text-2xl font-bold text-slate-100 flex items-center space-x-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  <h3 className="text-2xl font-bold text-slate-100 flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
                     <Shield className="w-6 h-6 text-[#c9963a]" />
-                    <span>{editingStaff ? 'Edit Staff Member' : 'Add Staff Member'}</span>
+                    <span>{editingStaff ? text.editStaff : text.addStaffModal}</span>
                   </h3>
                   <button onClick={handleCloseModal} className="p-2 text-slate-400 hover:text-[#c9963a] bg-[#132845] rounded-xl transition-colors">
                     <X className="w-5 h-5" />
@@ -278,26 +367,26 @@ const StaffPage = () => {
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-1.5">Full Name</label>
+                        <label className="block text-sm font-medium text-slate-400 mb-1.5">{text.fullName}</label>
                         <div className="relative">
                           <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                           <input 
                             type="text" 
                             defaultValue={editingStaff?.name || ''}
-                            placeholder="e.g. John Doe"
+                            placeholder={text.fullNamePlaceholder}
                             className="w-full pl-12 pr-4 py-3 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-[#c9963a] focus:ring-1 focus:ring-amber-500 transition-all"
                             required
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-1.5">Phone Number</label>
+                        <label className="block text-sm font-medium text-slate-400 mb-1.5">{text.phoneNumber}</label>
                         <div className="relative">
                           <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                           <input 
                             type="tel" 
                             defaultValue={editingStaff?.phone || ''}
-                            placeholder="+216XX XXXXXX"
+                            placeholder={text.phonePlaceholder}
                             className="w-full pl-12 pr-4 py-3 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-[#c9963a] focus:ring-1 focus:ring-amber-500 transition-all"
                             required
                           />
@@ -306,13 +395,13 @@ const StaffPage = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-1.5">Email Address</label>
+                      <label className="block text-sm font-medium text-slate-400 mb-1.5">{text.emailAddress}</label>
                       <div className="relative">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                         <input 
                           type="email" 
                           defaultValue={editingStaff?.email || ''}
-                          placeholder="staff@restaurant.com"
+                          placeholder={text.emailPlaceholder}
                           className="w-full pl-12 pr-4 py-3 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-[#c9963a] focus:ring-1 focus:ring-amber-500 transition-all"
                           required
                         />
@@ -321,19 +410,19 @@ const StaffPage = () => {
 
                     {!editingStaff && (
                       <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-1.5">Temporary Password</label>
+                        <label className="block text-sm font-medium text-slate-400 mb-1.5">{text.tempPassword}</label>
                         <input 
                           type="password" 
-                          placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                          placeholder={text.tempPasswordPlaceholder}
                           className="w-full px-4 py-3 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-[#c9963a] focus:ring-1 focus:ring-amber-500 transition-all"
                           required
                         />
-                        <p className="text-xs text-slate-500 mt-2">The staff member will be prompted to change this on their first login.</p>
+                        <p className="text-xs text-slate-500 mt-2">{text.tempPasswordHint}</p>
                       </div>
                     )}
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-1.5">Assign Role</label>
+                      <label className="block text-sm font-medium text-slate-400 mb-1.5">{text.assignRole}</label>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {['manager', 'waiter', 'cashier', 'cook'].map(role => (
                           <label key={role} className="cursor-pointer relative">
@@ -344,8 +433,8 @@ const StaffPage = () => {
                               defaultChecked={editingStaff?.role === role || (!editingStaff && role === 'waiter')}
                               className="peer sr-only" 
                             />
-                            <div className="py-2.5 px-3 text-center bg-[#132845] border border-[#1e3a5f] rounded-xl text-sm font-medium text-slate-400 peer-checked:bg-[#c9963a]/10 peer-checked:text-[#c9963a] peer-checked:border-[#c9963a]/50 transition-all capitalize">
-                              {role}
+                            <div className="py-2.5 px-3 text-center bg-[#132845] border border-[#1e3a5f] rounded-xl text-sm font-medium text-slate-400 peer-checked:bg-[#c9963a]/10 peer-checked:text-[#c9963a] peer-checked:border-[#c9963a]/50 transition-all">
+                              {roleLabels[role] || role}
                             </div>
                           </label>
                         ))}
@@ -354,10 +443,10 @@ const StaffPage = () => {
 
                     <div className="pt-6 flex gap-3 border-t border-[#1e3a5f]">
                       <button type="button" onClick={handleCloseModal} className="flex-1 py-3 px-4 bg-[#132845] hover:bg-[#1e3a5f] text-slate-300 rounded-xl font-medium transition-colors">
-                        Cancel
+                        {text.cancel}
                       </button>
                       <button type="submit" className="flex-1 py-3 px-4 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] rounded-xl font-semibold transition-colors">
-                        {editingStaff ? 'Save Changes' : 'Create Account'}
+                        {editingStaff ? text.saveChanges : text.createAccount}
                       </button>
                     </div>
                   </form>

@@ -10,6 +10,7 @@ import Clock from 'lucide-react/dist/esm/icons/clock';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer 
 } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import ManagerLayout from '../../layouts/ManagerLayout';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
@@ -50,6 +51,101 @@ const StatCard = ({ title, value, icon, colorClass }) => {
 };
 
 const ReportsPage = () => {
+  const { i18n } = useTranslation();
+  const currentLanguage = String(i18n.resolvedLanguage || i18n.language || 'en').split('-')[0];
+  const isArabic = currentLanguage === 'ar';
+  const text = useMemo(
+    () =>
+      isArabic
+        ? {
+            unknownItem: 'عنصر غير معروف',
+            loadDaily: 'جاري تحميل التقرير اليومي...',
+            loadWeekly: 'جاري تحميل التقرير الأسبوعي...',
+            loadMonthly: 'جاري تحميل التقرير الشهري...',
+            selectDate: 'اختر التاريخ:',
+            totalOrders: 'إجمالي الطلبات',
+            totalRevenue: 'إجمالي الإيرادات',
+            avgOrderValue: 'متوسط قيمة الطلب',
+            ordersList: 'قائمة الطلبات',
+            order: 'الطلب',
+            table: 'الطاولة',
+            amount: 'المبلغ',
+            status: 'الحالة',
+            time: 'الوقت',
+            noOrdersForDate: 'لا توجد طلبات لهذا التاريخ.',
+            weeklyOrders: 'إجمالي الطلبات (هذا الأسبوع)',
+            weeklyRevenue: 'إجمالي الإيرادات (هذا الأسبوع)',
+            revenueLast7Days: 'الإيرادات - آخر 7 أيام',
+            revenueLast30Days: 'الإيرادات - آخر 30 يومًا',
+            top5Items: 'أفضل 5 عناصر',
+            itemName: 'اسم العنصر',
+            qtySold: 'الكمية المباعة',
+            revenue: 'الإيرادات',
+            noItemSales: 'لا تتوفر بيانات مبيعات للعناصر.',
+            peakHours: 'ساعات الذروة',
+            pageTitle: 'التقارير والتحليلات',
+            pageSubtitle: 'راجع أداء نشاطك التجاري',
+            exportPdf: 'تصدير PDF',
+            exportExcel: 'تصدير Excel',
+            daily: 'يومي',
+            weekly: 'أسبوعي',
+            monthly: 'شهري',
+            statusCompleted: 'مكتمل',
+            statusPreparing: 'قيد التحضير',
+            statusReady: 'جاهز',
+            statusPending: 'قيد الانتظار',
+          }
+        : {
+            unknownItem: 'Unknown item',
+            loadDaily: 'Loading daily report...',
+            loadWeekly: 'Loading weekly report...',
+            loadMonthly: 'Loading monthly report...',
+            selectDate: 'Select Date:',
+            totalOrders: 'Total Orders',
+            totalRevenue: 'Total Revenue',
+            avgOrderValue: 'Avg Order Value',
+            ordersList: 'Orders List',
+            order: 'Order',
+            table: 'Table',
+            amount: 'Amount',
+            status: 'Status',
+            time: 'Time',
+            noOrdersForDate: 'No orders for this date.',
+            weeklyOrders: 'Total Orders (This Week)',
+            weeklyRevenue: 'Total Revenue (This Week)',
+            revenueLast7Days: 'Revenue - Last 7 Days',
+            revenueLast30Days: 'Revenue - Last 30 Days',
+            top5Items: 'Top 5 Items',
+            itemName: 'Item Name',
+            qtySold: 'Qty Sold',
+            revenue: 'Revenue',
+            noItemSales: 'No item sales data available.',
+            peakHours: 'Peak Hours',
+            pageTitle: 'Reports & Analytics',
+            pageSubtitle: 'Review your business performance',
+            exportPdf: 'Export PDF',
+            exportExcel: 'Export Excel',
+            daily: 'daily',
+            weekly: 'weekly',
+            monthly: 'monthly',
+            statusCompleted: 'completed',
+            statusPreparing: 'preparing',
+            statusReady: 'ready',
+            statusPending: 'pending',
+          },
+    [isArabic]
+  );
+
+  const statusLabels = useMemo(
+    () => ({
+      completed: text.statusCompleted,
+      preparing: text.statusPreparing,
+      ready: text.statusReady,
+      pending: text.statusPending,
+    }),
+    [text]
+  );
+
   const [activeTab, setActiveTab] = useState('daily');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [dailySummary, setDailySummary] = useState({ totalOrders: 0, totalRevenue: 0, averageOrderValue: 0 });
@@ -193,7 +289,7 @@ const ReportsPage = () => {
 
         setTopItems(
           topItemsReport.map((item) => ({
-            name: item?.itemName || 'Unknown item',
+            name: item?.itemName || text.unknownItem,
             qty: Number(item?.totalQuantity || 0),
             revenue: Number(item?.totalRevenue || 0),
           }))
@@ -221,7 +317,7 @@ const ReportsPage = () => {
     return () => {
       isActive = false;
     };
-  }, [reportsBasePath]);
+  }, [reportsBasePath, text.unknownItem]);
 
   const exportRange = useMemo(() => {
     if (activeTab === 'daily') {
@@ -302,9 +398,9 @@ const ReportsPage = () => {
   const renderDaily = () => (
     <Motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between bg-[#132845] border border-[#1e3a5f] p-4 rounded-2xl">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-3">
           <Calendar className="text-[#7c6af7] w-5 h-5" />
-          <span className="text-slate-300 font-medium">Select Date:</span>
+          <span className="text-slate-300 font-medium">{text.selectDate}</span>
         </div>
         <input 
           type="date" 
@@ -316,29 +412,29 @@ const ReportsPage = () => {
 
       {loadingDaily && (
         <div className="bg-[#132845] border border-[#1e3a5f] p-4 rounded-2xl text-slate-300 text-sm">
-          Loading daily report...
+          {text.loadDaily}
         </div>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        <StatCard title="Total Orders" value={DAILY_SUMMARY.totalOrders} icon={ShoppingBag} colorClass="bg-blue-500/10 text-blue-500" />
-        <StatCard title="Total Revenue" value={`${DAILY_SUMMARY.totalRevenue.toFixed(2)} TND`} icon={DollarSign} colorClass="bg-emerald-500/10 text-emerald-500" />
-        <StatCard title="Avg Order Value" value={`${DAILY_SUMMARY.averageOrderValue.toFixed(2)} TND`} icon={TrendingUp} colorClass="bg-purple-500/10 text-purple-500" />
+        <StatCard title={text.totalOrders} value={DAILY_SUMMARY.totalOrders} icon={ShoppingBag} colorClass="bg-blue-500/10 text-blue-500" />
+        <StatCard title={text.totalRevenue} value={`${DAILY_SUMMARY.totalRevenue.toFixed(2)} TND`} icon={DollarSign} colorClass="bg-emerald-500/10 text-emerald-500" />
+        <StatCard title={text.avgOrderValue} value={`${DAILY_SUMMARY.averageOrderValue.toFixed(2)} TND`} icon={TrendingUp} colorClass="bg-purple-500/10 text-purple-500" />
       </div>
 
       <div className="bg-[#132845] border border-[#1e3a5f] rounded-2xl overflow-hidden">
         <div className="p-6 border-b border-[#1e3a5f]">
-          <h3 className="text-xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>Orders List</h3>
+          <h3 className="text-xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>{text.ordersList}</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs md:text-sm">
             <thead className="bg-[#0d1f3c] text-slate-400 uppercase text-xs">
               <tr>
-                <th className="px-3 md:px-6 py-4 font-semibold">Order</th>
-                <th className="px-3 md:px-6 py-4 font-semibold">Table</th>
-                <th className="px-3 md:px-6 py-4 font-semibold">Amount</th>
-                <th className="px-3 md:px-6 py-4 font-semibold">Status</th>
-                <th className="hidden md:table-cell px-3 md:px-6 py-4 font-semibold">Time</th>
+                <th className="px-3 md:px-6 py-4 font-semibold">{text.order}</th>
+                <th className="px-3 md:px-6 py-4 font-semibold">{text.table}</th>
+                <th className="px-3 md:px-6 py-4 font-semibold">{text.amount}</th>
+                <th className="px-3 md:px-6 py-4 font-semibold">{text.status}</th>
+                <th className="hidden md:table-cell px-3 md:px-6 py-4 font-semibold">{text.time}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1e3a5f]">
@@ -357,7 +453,7 @@ const ReportsPage = () => {
                       order.status === 'preparing' ? 'bg-blue-500/10 text-blue-500' :
                       'bg-[#7c6af7]/10 text-[#7c6af7]'
                     }`}>
-                      {order.status}
+                      {statusLabels[order.status] || order.status}
                     </span>
                   </td>
                   <td className="hidden md:table-cell px-3 md:px-6 py-4 text-slate-400">
@@ -369,7 +465,7 @@ const ReportsPage = () => {
               {DAILY_ORDERS.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-3 md:px-6 py-8 text-center text-slate-400">
-                    No orders for this date.
+                    {text.noOrdersForDate}
                   </td>
                 </tr>
               )}
@@ -384,17 +480,17 @@ const ReportsPage = () => {
     <Motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
       {loadingWeekly && (
         <div className="bg-[#132845] border border-[#1e3a5f] p-4 rounded-2xl text-slate-300 text-sm">
-          Loading weekly report...
+          {text.loadWeekly}
         </div>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        <StatCard title="Total Orders (This Week)" value={WEEKLY_SUMMARY.totalOrders} icon={ShoppingBag} colorClass="bg-blue-500/10 text-blue-500" />
-        <StatCard title="Total Revenue (This Week)" value={`${WEEKLY_SUMMARY.totalRevenue.toFixed(2)} TND`} icon={DollarSign} colorClass="bg-emerald-500/10 text-emerald-500" />
+        <StatCard title={text.weeklyOrders} value={WEEKLY_SUMMARY.totalOrders} icon={ShoppingBag} colorClass="bg-blue-500/10 text-blue-500" />
+        <StatCard title={text.weeklyRevenue} value={`${WEEKLY_SUMMARY.totalRevenue.toFixed(2)} TND`} icon={DollarSign} colorClass="bg-emerald-500/10 text-emerald-500" />
       </div>
 
       <div className="bg-[#132845] border border-[#1e3a5f] rounded-2xl p-6">
-        <h3 className="text-xl font-bold text-slate-100 mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>Revenue - Last 7 Days</h3>
+        <h3 className="text-xl font-bold text-slate-100 mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>{text.revenueLast7Days}</h3>
         <div className="h-48 sm:h-64 md:h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={WEEKLY_DATA}>
@@ -418,12 +514,12 @@ const ReportsPage = () => {
     <Motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
       {loadingMonthly && (
         <div className="bg-[#132845] border border-[#1e3a5f] p-4 rounded-2xl text-slate-300 text-sm">
-          Loading monthly report...
+          {text.loadMonthly}
         </div>
       )}
 
       <div className="bg-[#132845] border border-[#1e3a5f] rounded-2xl p-6">
-        <h3 className="text-xl font-bold text-slate-100 mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>Revenue - Last 30 Days</h3>
+        <h3 className="text-xl font-bold text-slate-100 mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>{text.revenueLast30Days}</h3>
         <div className="h-48 sm:h-64 md:h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={MONTHLY_DATA}>
@@ -443,15 +539,15 @@ const ReportsPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-[#132845] border border-[#1e3a5f] rounded-2xl overflow-hidden">
           <div className="p-6 border-b border-[#1e3a5f]">
-            <h3 className="text-xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>Top 5 Items</h3>
+            <h3 className="text-xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>{text.top5Items}</h3>
           </div>
           <div className="p-0 overflow-x-auto">
             <table className="w-full text-left text-xs md:text-sm">
               <thead className="bg-[#0d1f3c] text-slate-400 uppercase text-xs">
                 <tr>
-                  <th className="px-3 md:px-6 py-4">Item Name</th>
-                  <th className="hidden md:table-cell px-3 md:px-6 py-4">Qty Sold</th>
-                  <th className="px-3 md:px-6 py-4">Revenue</th>
+                  <th className="px-3 md:px-6 py-4">{text.itemName}</th>
+                  <th className="hidden md:table-cell px-3 md:px-6 py-4">{text.qtySold}</th>
+                  <th className="px-3 md:px-6 py-4">{text.revenue}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1e3a5f]">
@@ -465,7 +561,7 @@ const ReportsPage = () => {
                 {TOP_ITEMS.length === 0 && (
                   <tr>
                     <td colSpan={3} className="px-3 md:px-6 py-8 text-center text-slate-400">
-                      No item sales data available.
+                      {text.noItemSales}
                     </td>
                   </tr>
                 )}
@@ -475,7 +571,7 @@ const ReportsPage = () => {
         </div>
 
         <div className="bg-[#132845] border border-[#1e3a5f] rounded-2xl p-6">
-          <h3 className="text-xl font-bold text-slate-100 mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>Peak Hours</h3>
+          <h3 className="text-xl font-bold text-slate-100 mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>{text.peakHours}</h3>
           <div className="h-48 sm:h-64 md:h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={PEAK_HOURS}>
@@ -503,27 +599,27 @@ const ReportsPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
           <div>
             <h2 className="text-2xl md:text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Reports & Analytics
+              {text.pageTitle}
             </h2>
-            <p className="text-slate-400 mt-1">Review your business performance</p>
+            <p className="text-slate-400 mt-1">{text.pageSubtitle}</p>
           </div>
           
           <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
             <button
               onClick={() => handleExport('pdf')}
               disabled={isExportingPdf}
-              className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-[#7c6af7]/10 hover:bg-[#7c6af7]/20 text-[#7c6af7] border border-[#7c6af7]/20 px-4 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-60"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#7c6af7]/10 hover:bg-[#7c6af7]/20 text-[#7c6af7] border border-[#7c6af7]/20 px-4 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-60"
             >
               <FileText className="w-4 h-4" />
-              <span>Export PDF</span>
+              <span>{text.exportPdf}</span>
             </button>
             <button
               onClick={() => handleExport('excel')}
               disabled={isExportingExcel}
-              className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] px-4 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-60"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] px-4 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-60"
             >
               <FileSpreadsheet className="w-4 h-4" />
-              <span>Export Excel</span>
+              <span>{text.exportExcel}</span>
             </button>
           </div>
         </div>
@@ -540,7 +636,7 @@ const ReportsPage = () => {
                   : 'text-slate-400 hover:text-slate-200 hover:bg-[#1e3a5f]/50'
               }`}
             >
-              {tab}
+              {tab === 'daily' ? text.daily : tab === 'weekly' ? text.weekly : text.monthly}
             </button>
           ))}
         </div>

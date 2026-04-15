@@ -388,7 +388,7 @@ const KitchenDisplayPage = () => {
   };
 
   return (
-    <div className="h-screen w-full bg-[#0a1628] text-slate-100 flex flex-col font-sans overflow-hidden">
+    <div className="min-h-screen md:h-screen w-full bg-[#0a1628] text-slate-100 flex flex-col font-sans overflow-y-auto md:overflow-hidden">
       <header className="min-h-20 bg-[#0d1f3c] border-b-2 border-[#1e3a5f] px-4 md:px-6 py-3 flex flex-wrap items-center justify-between gap-2 shrink-0 shadow-lg z-20">
         <div className="flex items-center gap-2 sm:gap-6 flex-wrap">
           <h1 className="text-2xl md:text-3xl font-bold tracking-wider text-[#c9963a] uppercase">{t('kitchen.title')}</h1>
@@ -408,7 +408,7 @@ const KitchenDisplayPage = () => {
         </div>
       </header>
 
-      <main className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-3 gap-0">
+      <main className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-3 gap-0 overflow-y-auto md:overflow-hidden">
         {loading && (
           <div className="col-span-full min-h-[60vh] flex items-center justify-center">
             <div className="w-10 h-10 border-2 border-[#c9963a] border-t-transparent rounded-full animate-spin"></div>
@@ -416,14 +416,14 @@ const KitchenDisplayPage = () => {
         )}
 
         {!loading && columnData.map(col => (
-          <section key={col.key} className={"flex flex-col min-h-64 h-[60vh] md:h-auto md:min-h-0 overflow-hidden bg-[#0a1628] " + col.borderClass}>
+          <section key={col.key} className={"flex flex-col min-h-[52vh] md:min-h-0 md:h-auto overflow-hidden bg-[#0a1628] " + col.borderClass}>
             <div className={"p-4 border-b-4 flex justify-between items-center shrink-0 " + col.headerClass}>
               <h2 className="text-lg md:text-2xl font-black tracking-widest uppercase">{col.label}</h2>
               <div className={"w-8 h-8 rounded-full flex items-center justify-center font-black text-xl " + col.badgeClass}>
                 {col.count}
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-5 space-y-5"
+            <div className="flex-1 overflow-y-visible md:overflow-y-auto p-5 space-y-5 touch-pan-y overscroll-contain"
               style={{ scrollbarWidth: 'thin', scrollbarColor: '#1e3a5f transparent' }}>
               {col.orders.map(order => {
                 const orderId = order._id || order.id;
