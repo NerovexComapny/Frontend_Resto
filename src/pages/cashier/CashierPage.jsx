@@ -90,6 +90,33 @@ const normalizeOrder = (order) => {
   };
 };
 
+const extractApiErrorMessage = async (error, fallbackMessage) => {
+  const data = error?.response?.data;
+
+  if (data instanceof Blob) {
+    try {
+      const text = await data.text();
+      const parsed = JSON.parse(text);
+
+      if (parsed?.message) {
+        return String(parsed.message);
+      }
+    } catch {
+      // Ignore blob parsing errors and use fallback below.
+    }
+  }
+
+  if (error?.response?.data?.message) {
+    return String(error.response.data.message);
+  }
+
+  if (error?.message) {
+    return String(error.message);
+  }
+
+  return fallbackMessage;
+};
+
 const CashierPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -280,8 +307,9 @@ const CashierPage = () => {
       await downloadReceiptPdfForOrder(order);
       setReceiptNotice('Facture exportee en PDF.');
     } catch (error) {
+      const message = await extractApiErrorMessage(error, 'Unable to export receipt');
       setReceiptNotice('Export facture indisponible pour le moment.');
-      toast.error(error?.response?.data?.message || error?.message || 'Unable to export receipt');
+      toast.error(message);
     }
   };
 
@@ -290,8 +318,9 @@ const CashierPage = () => {
       await openReceiptPrintPreview(order);
       setReceiptNotice('Apercu impression ouvert.');
     } catch (error) {
+      const message = await extractApiErrorMessage(error, 'Unable to print receipt');
       setReceiptNotice('Impression indisponible pour le moment.');
-      toast.error(error?.response?.data?.message || error?.message || 'Unable to print receipt');
+      toast.error(message);
     }
   };
 
@@ -359,8 +388,10 @@ const CashierPage = () => {
       try {
         await downloadReceiptPdfForOrder(paidOrder);
         setReceiptNotice('Facture exportee automatiquement en PDF.');
-      } catch {
+      } catch (error) {
+        const message = await extractApiErrorMessage(error, 'Unable to export receipt');
         setReceiptNotice('Paiement confirme. Export facture indisponible pour le moment.');
+        toast.error(message);
       }
 
       // Cleanup after success
