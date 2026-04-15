@@ -1,5 +1,6 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { io } from 'socket.io-client';
 import Bell from 'lucide-react/dist/esm/icons/bell';
 import ChefHat from 'lucide-react/dist/esm/icons/chef-hat';
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
@@ -15,10 +16,10 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
-import { connectSocket } from '../../services/socket';
 import LanguageSwitcher from '../../components/shared/LanguageSwitcher';
 
 const ACTIVE_API_STATUSES = new Set(['pending', 'confirmed', 'preparing', 'ready']);
+const Motion = motion;
 
 const getOrdersEndpoint = () => {
   const baseURL = String(api.defaults.baseURL || '');
@@ -119,16 +120,6 @@ const normalizeOrder = (order, t) => {
   };
 };
 
-const formatOrderDetails = (orderItems, t) => {
-  if (!Array.isArray(orderItems) || orderItems.length === 0) {
-    return t('waiter.noItemDetails');
-  }
-
-  return orderItems
-    .map((item) => `${Number(item?.qty || 1)}x ${item?.name || t('kitchen.item')}`)
-    .join(', ');
-};
-
 const buildWaiterTables = (apiTables, waiterTableIds, orders, previousNeedsHelpById = {}) => {
   const filteredTables = Array.isArray(apiTables)
     ? apiTables.filter((table) => waiterTableIds.has(toId(table?._id)))
@@ -190,6 +181,7 @@ const WaiterOrdersPage = () => {
   const cachedTablesRef = useRef([]);
   const waiterTableIdsRef = useRef(new Set());
   const previousNeedsHelpRef = useRef({});
+  const socketRef = useRef(null);
 
   const statusLabels = useMemo(
     () => ({
@@ -254,18 +246,6 @@ const WaiterOrdersPage = () => {
     });
   }, []);
 
-  const addNotification = useCallback((notification) => {
-    setNotifications((previousNotifications) => [
-      {
-        id: Date.now() + Math.random(),
-        read: false,
-        time: t('waiter.justNow'),
-        ...notification,
-      },
-      ...previousNotifications,
-    ]);
-  }, [t]);
-
   const unreadCount = useMemo(
     () => notifications.filter((notification) => !notification.read).length,
     [notifications]
@@ -303,7 +283,7 @@ const WaiterOrdersPage = () => {
 
       previousNeedsHelpRef.current[table.id] = table.needsHelp;
     });
-  }, [tables]);
+  }, [tables, t]);
 
   useEffect(() => {
     if (!restaurantId) {
@@ -361,125 +341,135 @@ const WaiterOrdersPage = () => {
 
     fetchData();
 
-    const socket = connectSocket();
-    socket.emit('joinRestaurant', restaurantId);
+    return () => {
+      isActive = false;
+    };
+  }, [belongsToCurrentWaiter, ordersEndpoint, restaurantId, syncTablesFromOrders, t, tablesEndpoint]);
+
+  useEffect(() => {
+    if (!restaurantId) {
+      return undefined;
+    }
+
+    const baseApiUrl = String(import.meta.env.VITE_API_URL || api.defaults.baseURL || '');
+    const SOCKET_URL = baseApiUrl.replace(/\/api\/?$/, '');
+    socketRef.current = io(SOCKET_URL);
+
+    // Join restaurant room for targeted order notifications.
+    socketRef.current.emit('joinRestaurant', restaurantId);
 
     const handleOrderStatusUpdated = (data) => {
-      if (!data?.order?._id) return;
+      const order = data?.order;
+      if (!order?._id) return;
+      if (!belongsToCurrentWaiter(order)) return;
 
-      const incomingOrder = data.order;
-      const incomingId = toId(incomingOrder._id);
-      const normalizedOrder = normalizeOrder(incomingOrder, t);
-      const belongsToWaiter = belongsToCurrentWaiter(incomingOrder);
+      const tableNumber = order.table?.number || order.table || '-';
+      const normalizedOrder = normalizeOrder(order, t);
 
-      setOrders((previousOrders) => {
-        const exists = previousOrders.some((order) => order.id === incomingId);
-        let nextOrders = previousOrders;
+      if (order.status === 'ready') {
+        const newNotif = {
+          id: Date.now(),
+          type: 'ready',
+          message: `Order ${getOrderDisplayNumber(order.orderNumber, order._id, t)} - Table ${tableNumber} is Ready to Serve!`,
+          time: 'Just now',
+          read: false,
+          orderId: order._id,
+          tableNumber,
+        };
 
-        if (!belongsToWaiter) {
-          nextOrders = exists
-            ? previousOrders.filter((order) => order.id !== incomingId)
-            : previousOrders;
+        setNotifications((previousNotifications) => [newNotif, ...previousNotifications]);
+
+        toast.success(`🍽️ Table ${tableNumber} - Order Ready!`, {
+          duration: 5000,
+          icon: '🔔',
+        });
+
+        setOrders((previousOrders) => {
+          const nextOrders = previousOrders.some(
+            (existingOrder) => existingOrder.id === normalizedOrder.id || existingOrder._id === order._id
+          )
+            ? previousOrders.map((existingOrder) => (
+                existingOrder.id === normalizedOrder.id || existingOrder._id === order._id
+                  ? { ...existingOrder, ...normalizedOrder, status: 'ready', rawStatus: 'ready' }
+                  : existingOrder
+              ))
+            : [{ ...normalizedOrder, status: 'ready', rawStatus: 'ready' }, ...previousOrders];
+
           syncTablesFromOrders(nextOrders);
           return nextOrders;
-        }
-
-        if (ACTIVE_API_STATUSES.has(incomingOrder.status)) {
-          nextOrders = exists
-            ? previousOrders.map((order) => (order.id === incomingId ? normalizedOrder : order))
-            : [normalizedOrder, ...previousOrders];
-        } else if (incomingOrder.status === 'served') {
-          nextOrders = exists
-            ? previousOrders.map((order) => (order.id === incomingId ? normalizedOrder : order))
-            : previousOrders;
-        } else {
-          nextOrders = previousOrders.filter((order) => order.id !== incomingId);
-        }
-
-        syncTablesFromOrders(nextOrders);
-        return nextOrders;
-      });
-    };
-
-    const handleOrderReady = (data) => {
-      if (!data?.order?._id) return;
-
-      const incomingOrder = data.order;
-      if (!belongsToCurrentWaiter(incomingOrder)) {
-        return;
+        });
       }
 
-      const normalizedOrder = normalizeOrder(incomingOrder, t);
+      if (order.status === 'preparing') {
+        const newNotif = {
+          id: Date.now(),
+          type: 'new',
+          message: `Order ${getOrderDisplayNumber(order.orderNumber, order._id, t)} - Table ${tableNumber} is being prepared`,
+          time: 'Just now',
+          read: false,
+        };
 
-      setOrders((previousOrders) => {
-        const exists = previousOrders.some((order) => order.id === normalizedOrder.id);
+        setNotifications((previousNotifications) => [newNotif, ...previousNotifications]);
 
-        const nextOrders = exists
-          ? previousOrders.map((order) => (order.id === normalizedOrder.id ? normalizedOrder : order))
-          : [normalizedOrder, ...previousOrders];
+        setOrders((previousOrders) => {
+          const nextOrders = previousOrders.some(
+            (existingOrder) => existingOrder.id === normalizedOrder.id || existingOrder._id === order._id
+          )
+            ? previousOrders.map((existingOrder) => (
+                existingOrder.id === normalizedOrder.id || existingOrder._id === order._id
+                  ? { ...existingOrder, ...normalizedOrder, status: 'in_progress', rawStatus: 'preparing' }
+                  : existingOrder
+              ))
+            : [{ ...normalizedOrder, status: 'in_progress', rawStatus: 'preparing' }, ...previousOrders];
 
-        syncTablesFromOrders(nextOrders);
-        return nextOrders;
-      });
-
-      addNotification({
-        type: 'ready',
-        message: t('waiter.readyNotification', {
-          table: normalizedOrder.table,
-          order: getOrderDisplayNumber(normalizedOrder.orderNumber, normalizedOrder.id, t),
-          details: formatOrderDetails(normalizedOrder.items, t),
-        }),
-      });
+          syncTablesFromOrders(nextOrders);
+          return nextOrders;
+        });
+      }
     };
 
     const handleNewOrder = (data) => {
-      if (!data?.order?._id) return;
+      const order = data?.order;
+      if (!order?._id) return;
+      if (!belongsToCurrentWaiter(order)) return;
 
-      const incomingOrder = data.order;
-      if (!ACTIVE_API_STATUSES.has(incomingOrder.status || 'pending')) {
-        return;
-      }
+      const tableNumber = order.table?.number || order.table || '-';
+      const normalizedOrder = normalizeOrder(order, t);
 
-      if (!belongsToCurrentWaiter(incomingOrder)) {
-        return;
-      }
-
-      const normalizedOrder = normalizeOrder(incomingOrder, t);
       if (normalizedOrder.tableId) {
         waiterTableIdsRef.current.add(normalizedOrder.tableId);
       }
 
+      const newNotif = {
+        id: Date.now(),
+        type: 'new',
+        message: `New order from Table ${tableNumber}`,
+        time: 'Just now',
+        read: false,
+      };
+
+      setNotifications((previousNotifications) => [newNotif, ...previousNotifications]);
       setOrders((previousOrders) => {
         const nextOrders = [
           normalizedOrder,
-          ...previousOrders.filter((order) => order.id !== normalizedOrder.id),
+          ...previousOrders.filter((existingOrder) => existingOrder.id !== normalizedOrder.id),
         ];
 
         syncTablesFromOrders(nextOrders);
         return nextOrders;
       });
-
-      addNotification({
-        type: 'new',
-        message: t('waiter.newOrderNotification', { table: normalizedOrder.table }),
-      });
     };
 
-    socket.on('orderStatusUpdated', handleOrderStatusUpdated);
-    socket.on('order_updated', handleOrderStatusUpdated);
-    socket.on('newOrder', handleNewOrder);
-    socket.on('new_order', handleNewOrder);
-    socket.on('order_ready', handleOrderReady);
+    socketRef.current.on('orderStatusUpdated', handleOrderStatusUpdated);
+    socketRef.current.on('newOrder', handleNewOrder);
 
     return () => {
-      isActive = false;
-      socket.off('orderStatusUpdated', handleOrderStatusUpdated);
-      socket.off('order_updated', handleOrderStatusUpdated);
-      socket.off('newOrder', handleNewOrder);
-      socket.off('new_order', handleNewOrder);
-      socket.off('order_ready', handleOrderReady);
+      socketRef.current?.off('orderStatusUpdated', handleOrderStatusUpdated);
+      socketRef.current?.off('newOrder', handleNewOrder);
+      socketRef.current?.disconnect();
+      socketRef.current = null;
     };
-  }, [addNotification, belongsToCurrentWaiter, ordersEndpoint, restaurantId, syncTablesFromOrders, t, tablesEndpoint]);
+  }, [belongsToCurrentWaiter, restaurantId, syncTablesFromOrders, t, user?.restaurant]);
 
   const filteredOrders = useMemo(() => {
     const baseOrders = orderFilter === 'all'
@@ -597,15 +587,10 @@ const WaiterOrdersPage = () => {
             title={t('common.notifications')}
           >
             <Bell className={`w-6 h-6 ${hasTableCalls ? 'animate-bounce text-red-400' : ''}`} />
-            {hasTableCalls ? (
-              <span className="absolute top-1 right-1 flex h-3 w-3">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping"></span>
-                <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500 border-2 border-[#0d1f3c]"></span>
+            {unreadCount > 0 && (
+              <span className={`absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full border-2 border-[#0d1f3c] text-[10px] font-bold text-white flex items-center justify-center ${hasTableCalls ? 'bg-red-500 animate-pulse' : 'bg-[#0891b2]'}`}>
+                {unreadCount > 99 ? '99+' : unreadCount}
               </span>
-            ) : (
-              unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-[#0d1f3c]"></span>
-              )
             )}
           </button>
 
@@ -636,7 +621,7 @@ const WaiterOrdersPage = () => {
       </div>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 overflow-y-auto p-4 pb-24">
+      <main className="flex-1 overflow-y-auto p-4 pb-24 w-full max-w-4xl mx-auto">
 
         {loading && (
           <div className="min-h-[50vh] flex items-center justify-center">
@@ -646,7 +631,7 @@ const WaiterOrdersPage = () => {
 
         {/* TAB: MY TABLES */}
         {!loading && activeTab === 'my-tables' && (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {tables.map((table) => (
               <div
                 key={table.id}
@@ -718,13 +703,13 @@ const WaiterOrdersPage = () => {
             {/* Orders List */}
             <AnimatePresence>
               {filteredOrders.map((order) => (
-                <motion.div
+                <Motion.div
                   layout
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   key={order.id}
-                  className={`bg-[#132845] border border-[#1e3a5f] rounded-2xl p-4 flex flex-col ${order.status === 'served' ? 'opacity-60' : ''}`}
+                  className={`bg-[#132845] border border-[#1e3a5f] rounded-2xl p-4 flex flex-col text-sm md:text-base ${order.status === 'served' ? 'opacity-60' : ''}`}
                 >
                   <div className="flex justify-between items-center mb-3">
                     <div className="flex items-center space-x-3">
@@ -768,7 +753,7 @@ const WaiterOrdersPage = () => {
                       <ChefHat className="w-5 h-5" /> {t('waiter.sendToKitchen')}
                     </button>
                   )}
-                </motion.div>
+                </Motion.div>
               ))}
             </AnimatePresence>
 
@@ -785,18 +770,18 @@ const WaiterOrdersPage = () => {
       {/* NOTIFICATION PANEL (SLIDE IN) */}
       <AnimatePresence>
         {showNotifications && (
-          <motion.div
+          <Motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm flex justify-end"
           >
-            <motion.div
+            <Motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="w-full max-w-sm h-full bg-[#0d1f3c] border-l border-[#1e3a5f] flex flex-col shadow-2xl"
+              className="w-full sm:w-96 h-full bg-[#0d1f3c] border-l border-[#1e3a5f] flex flex-col shadow-2xl"
             >
               <div className="p-4 border-b border-[#1e3a5f] flex justify-between items-center bg-[#132845]">
                 <h2 className="text-lg font-bold flex items-center gap-2">
@@ -848,8 +833,8 @@ const WaiterOrdersPage = () => {
                   </button>
                 </div>
               )}
-            </motion.div>
-          </motion.div>
+            </Motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
 

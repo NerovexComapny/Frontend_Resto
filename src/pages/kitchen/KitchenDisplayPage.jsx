@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
+﻿import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import Clock from 'lucide-react/dist/esm/icons/clock';
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
 import ChefHat from 'lucide-react/dist/esm/icons/chef-hat';
@@ -26,6 +26,13 @@ const toKitchenStatus = (status) => {
 const toApiStatus = (status) => {
   if (status === 'in_progress') return 'preparing';
   return status;
+};
+
+const toId = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value._id) return String(value._id);
+  return String(value);
 };
 
 const normalizeItemName = (item) => {
@@ -120,7 +127,7 @@ const OrderTicket = memo(({ order, onAction, isUpdating, labels }) => {
 
       <div className="flex justify-between items-start border-b border-[#1e3a5f] pb-4 z-10">
         <div>
-          <div className="text-5xl font-bold text-[#c9963a]" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <div className="text-3xl md:text-5xl font-bold text-[#c9963a]" style={{ fontFamily: "'Playfair Display', serif" }}>
             {(String(order.table).toLowerCase() !== 'takeaway')
                 ? `${labels.table} ${order.table}`
                 : labels.takeaway}
@@ -135,7 +142,7 @@ const OrderTicket = memo(({ order, onAction, isUpdating, labels }) => {
 
       <div className="flex-1 space-y-3 py-3 z-10">
         {order.items.map((item, idx) => (
-          <div key={idx} className="flex items-start text-3xl font-bold text-slate-100 leading-tight">
+          <div key={idx} className="flex items-start text-xl md:text-3xl font-bold text-slate-100 leading-tight">
             <span className="text-[#c9963a] mr-3 opacity-70">•</span>
             <span>{item.name}</span>
           </div>
@@ -155,7 +162,7 @@ const OrderTicket = memo(({ order, onAction, isUpdating, labels }) => {
             onClick={() => onAction(actionOrderId, 'in_progress')}
             disabled={isUpdating}
             className={
-              "w-full py-5 text-2xl font-bold text-white rounded-xl transition-all flex items-center justify-center gap-3 "
+              "w-full py-3 md:py-5 text-base md:text-2xl font-bold text-white rounded-xl transition-all flex items-center justify-center gap-3 "
               + (isUpdating
                 ? "bg-blue-600/70 cursor-not-allowed opacity-80"
                 : "bg-blue-600 hover:bg-blue-500 active:scale-[0.98]")
@@ -170,7 +177,7 @@ const OrderTicket = memo(({ order, onAction, isUpdating, labels }) => {
             onClick={() => onAction(actionOrderId, 'ready')}
             disabled={isUpdating}
             className={
-              "w-full py-5 text-2xl font-bold text-white rounded-xl transition-all flex items-center justify-center gap-3 "
+              "w-full py-3 md:py-5 text-base md:text-2xl font-bold text-white rounded-xl transition-all flex items-center justify-center gap-3 "
               + (isUpdating
                 ? "bg-emerald-600/70 cursor-not-allowed opacity-80"
                 : "bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98]")
@@ -185,7 +192,7 @@ const OrderTicket = memo(({ order, onAction, isUpdating, labels }) => {
             onClick={() => onAction(actionOrderId, 'served')}
             disabled={isUpdating}
             className={
-              "w-full py-4 text-xl font-bold rounded-xl border transition-all "
+              "w-full py-3 md:py-5 text-base md:text-2xl font-bold rounded-xl border transition-all "
               + (isUpdating
                 ? "text-slate-400 bg-[#1e3a5f]/70 border-[#1e4a75] cursor-not-allowed opacity-80"
                 : "text-slate-400 bg-[#1e3a5f] hover:bg-[#1e4a75] border-[#1e4a75] active:scale-[0.98]")
@@ -208,13 +215,23 @@ const KitchenDisplayPage = () => {
   const ordersEndpoint = getOrdersEndpoint();
   const ordersRef = useRef([]);
   const inFlightActionsRef = useRef(new Set());
+  const userContext = useMemo(() => {
+    if (user) return user;
+
+    try {
+      return JSON.parse(localStorage.getItem('user') || 'null');
+    } catch {
+      return null;
+    }
+  }, [user]);
+  const restaurantId = useMemo(() => toId(userContext?.restaurant), [userContext]);
 
   useEffect(() => {
     ordersRef.current = orders;
   }, [orders]);
 
   useEffect(() => {
-    if (!user?.restaurant) return;
+    if (!restaurantId) return;
 
     let isActive = true;
 
@@ -254,12 +271,17 @@ const KitchenDisplayPage = () => {
     fetchKitchenOrders();
 
     const socket = connectSocket();
-    socket.emit('joinRestaurant', user.restaurant);
+    socket.emit('joinRestaurant', restaurantId);
 
     const handleNewOrder = (data) => {
-      if (!data?.order) return;
+      const incomingOrder = data?.order;
+      if (!incomingOrder?._id) return;
 
-      const mapped = normalizeOrder({ ...data.order, status: 'new' });
+      const mapped = normalizeOrder(incomingOrder);
+      if (mapped.status === 'served') {
+        return;
+      }
+
       setOrders((prev) => [mapped, ...prev.filter((order) => order._id !== mapped._id)]);
     };
 
@@ -269,9 +291,24 @@ const KitchenDisplayPage = () => {
       const mapped = normalizeOrder(data.order);
       setOrders((prev) => {
         const exists = prev.some((order) => order._id === mapped._id);
-        if (!exists) return prev;
+
+        if (mapped.status === 'served') {
+          return prev.filter((order) => order._id !== mapped._id);
+        }
+
+        if (!exists) {
+          return [mapped, ...prev];
+        }
+
         return prev.map((order) => (order._id === mapped._id ? mapped : order));
       });
+    };
+
+    const handleOrderCancelled = (data) => {
+      const cancelledId = toId(data?.order?._id);
+      if (!cancelledId) return;
+
+      setOrders((prev) => prev.filter((order) => order._id !== cancelledId));
     };
 
     socket.on('newOrder', handleNewOrder);
@@ -279,6 +316,7 @@ const KitchenDisplayPage = () => {
     socket.on('orderStatusUpdated', handleOrderStatusUpdated);
     socket.on('order_updated', handleOrderStatusUpdated);
     socket.on('order_ready', handleOrderStatusUpdated);
+    socket.on('orderCancelled', handleOrderCancelled);
 
     return () => {
       isActive = false;
@@ -287,8 +325,9 @@ const KitchenDisplayPage = () => {
       socket.off('orderStatusUpdated', handleOrderStatusUpdated);
       socket.off('order_updated', handleOrderStatusUpdated);
       socket.off('order_ready', handleOrderStatusUpdated);
+      socket.off('orderCancelled', handleOrderCancelled);
     };
-  }, [ordersEndpoint, user?.restaurant]);
+  }, [ordersEndpoint, restaurantId]);
 
   const handleAction = useCallback(async (orderId, newStatus) => {
     if (!orderId) return;
@@ -332,8 +371,8 @@ const KitchenDisplayPage = () => {
   const readyOrders = orders.filter(o => o.status === 'ready');
 
   const columnData = [
-    { key: 'new', label: t('kitchen.newOrders'), orders: newOrders, count: newOrders.length, headerClass: 'bg-[#c9963a]/10 text-[#c9963a] border-[#c9963a]/20', badgeClass: 'bg-[#c9963a] text-slate-900', emptyIcon: <Flame className="w-16 h-16 mb-4" />, emptyText: t('kitchen.noNewOrders'), borderClass: 'border-r-4 border-[#132845]' },
-    { key: 'in_progress', label: t('kitchen.inProgress'), orders: inProgressOrders, count: inProgressOrders.length, headerClass: 'bg-blue-500/10 text-blue-500 border-blue-500/20', badgeClass: 'bg-blue-500 text-white', emptyIcon: <ChefHat className="w-16 h-16 mb-4" />, emptyText: t('kitchen.clearBoard'), borderClass: 'border-r-4 border-[#132845]' },
+    { key: 'new', label: t('kitchen.newOrders'), orders: newOrders, count: newOrders.length, headerClass: 'bg-[#c9963a]/10 text-[#c9963a] border-[#c9963a]/20', badgeClass: 'bg-[#c9963a] text-slate-900', emptyIcon: <Flame className="w-16 h-16 mb-4" />, emptyText: t('kitchen.noNewOrders'), borderClass: 'md:border-r-4 border-[#132845]' },
+    { key: 'in_progress', label: t('kitchen.inProgress'), orders: inProgressOrders, count: inProgressOrders.length, headerClass: 'bg-blue-500/10 text-blue-500 border-blue-500/20', badgeClass: 'bg-blue-500 text-white', emptyIcon: <ChefHat className="w-16 h-16 mb-4" />, emptyText: t('kitchen.clearBoard'), borderClass: 'md:border-r-4 border-[#132845]' },
     { key: 'ready', label: t('kitchen.readyToServe'), orders: readyOrders, count: readyOrders.length, headerClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', badgeClass: 'bg-emerald-500 text-white', emptyIcon: <CheckCircle2 className="w-16 h-16 mb-4" />, emptyText: t('kitchen.nothingReady'), borderClass: '' },
   ];
 
@@ -350,12 +389,12 @@ const KitchenDisplayPage = () => {
 
   return (
     <div className="h-screen w-full bg-[#0a1628] text-slate-100 flex flex-col font-sans overflow-hidden">
-      <header className="h-20 bg-[#0d1f3c] border-b-2 border-[#1e3a5f] px-6 flex items-center justify-between shrink-0 shadow-lg z-20">
-        <div className="flex items-center space-x-6">
-          <h1 className="text-3xl font-bold tracking-wider text-[#c9963a] uppercase">{t('kitchen.title')}</h1>
-          <div className="flex gap-3">
+      <header className="min-h-20 bg-[#0d1f3c] border-b-2 border-[#1e3a5f] px-4 md:px-6 py-3 flex flex-wrap items-center justify-between gap-2 shrink-0 shadow-lg z-20">
+        <div className="flex items-center gap-2 sm:gap-6 flex-wrap">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-wider text-[#c9963a] uppercase">{t('kitchen.title')}</h1>
+          <div className="flex flex-wrap gap-2">
             {columnData.map(col => (
-              <span key={col.key} className={"px-3 py-1 text-sm font-bold rounded-lg " + (col.count > 0 ? col.headerClass + " border" : "bg-[#132845] text-slate-500")}>
+              <span key={col.key} className={"px-2 md:px-3 py-1 text-xs md:text-sm font-bold rounded-lg " + (col.count > 0 ? col.headerClass + " border" : "bg-[#132845] text-slate-500")}>
                 {col.count} {col.label.split(' ')[0].toUpperCase()}
               </span>
             ))}
@@ -363,21 +402,23 @@ const KitchenDisplayPage = () => {
         </div>
         <div className="flex items-center gap-3">
           <LanguageSwitcher compact />
-          <ClockDisplay />
+          <div className="hidden sm:block">
+            <ClockDisplay />
+          </div>
         </div>
       </header>
 
-      <main className="flex-1 min-h-0 grid grid-cols-3 gap-0">
+      <main className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-3 gap-0">
         {loading && (
-          <div className="col-span-3 min-h-[60vh] flex items-center justify-center">
+          <div className="col-span-full min-h-[60vh] flex items-center justify-center">
             <div className="w-10 h-10 border-2 border-[#c9963a] border-t-transparent rounded-full animate-spin"></div>
           </div>
         )}
 
         {!loading && columnData.map(col => (
-          <section key={col.key} className={"flex flex-col min-h-0 bg-[#0a1628] " + col.borderClass}>
+          <section key={col.key} className={"flex flex-col min-h-64 h-[60vh] md:h-auto md:min-h-0 overflow-hidden bg-[#0a1628] " + col.borderClass}>
             <div className={"p-4 border-b-4 flex justify-between items-center shrink-0 " + col.headerClass}>
-              <h2 className="text-2xl font-black tracking-widest uppercase">{col.label}</h2>
+              <h2 className="text-lg md:text-2xl font-black tracking-widest uppercase">{col.label}</h2>
               <div className={"w-8 h-8 rounded-full flex items-center justify-center font-black text-xl " + col.badgeClass}>
                 {col.count}
               </div>

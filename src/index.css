@@ -38,3 +38,11 @@ h1, h2, h3 { font-family: 'Playfair Display', serif; }
 .animate-fade-in {
   animation: fade-in 0.3s ease-out forwards;
 }
+
+@media print {
+  *,
+  *::before,
+  *::after {
+    font-family: Arial, sans-serif !important;
+  }
+}

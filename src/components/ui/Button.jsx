@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 
 const variants = {
   primary: 'bg-amber-500 hover:bg-amber-400 text-[#13131a] shadow-[0_0_15px_rgba(245,158,11,0.2)]',
@@ -35,7 +35,7 @@ const Button = React.forwardRef(({
       {...props}
     >
       {loading ? (
-        <motion.div
+        <Motion.div
           animate={{ rotate: 360 }}
           transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
           className="w-4 h-4 border-2 border-current border-t-transparent rounded-full"

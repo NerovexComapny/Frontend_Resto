@@ -399,8 +399,8 @@ const MenuManagementPage = () => {
     <ManagerLayout>
       <div className="space-y-6">
         {/* Header & Tabs */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h2 className="text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
             Menu Management
           </h2>
           
@@ -445,7 +445,7 @@ const MenuManagementPage = () => {
             <div className="flex justify-end">
               <button 
                 onClick={() => setIsCategoryModalOpen(true)}
-                className="flex items-center space-x-2 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] px-4 py-2 rounded-xl font-semibold transition-colors"
+                className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] px-4 py-2 rounded-xl font-semibold transition-colors"
               >
                 <Plus className="w-5 h-5" />
                 <span>Add Category</span>
@@ -456,7 +456,7 @@ const MenuManagementPage = () => {
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
             >
               {categories.map((cat) => (
                 <Motion.div
@@ -503,9 +503,9 @@ const MenuManagementPage = () => {
             className="space-y-6"
           >
             {/* Toolbar */}
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-[#0d1f3c] p-4 rounded-2xl border border-[#1e3a5f]">
-              <div className="flex flex-1 w-full gap-4">
-                <div className="relative flex-1 max-w-sm">
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-[#0d1f3c] p-4 rounded-2xl border border-[#1e3a5f]">
+              <div className="flex flex-col sm:flex-row w-full gap-3">
+                <div className="relative w-full max-w-full sm:max-w-xs">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                   <input 
                     type="text"
@@ -515,7 +515,7 @@ const MenuManagementPage = () => {
                     className="w-full pl-10 pr-4 py-2 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#c9963a] transition-colors"
                   />
                 </div>
-                <div className="relative flex-1 max-w-xs">
+                <div className="relative w-full sm:w-auto">
                   <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                   <select 
                     value={categoryFilter}
@@ -542,7 +542,7 @@ const MenuManagementPage = () => {
                     category: previousForm.category || categories[0]?._id || '',
                   }));
                 }}
-                className="w-full md:w-auto flex items-center justify-center space-x-2 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] px-4 py-2 rounded-xl font-semibold transition-colors"
+                className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] px-4 py-2 rounded-xl font-semibold transition-colors"
               >
                 <Plus className="w-5 h-5" />
                 <span>Add Item</span>
@@ -554,7 +554,7 @@ const MenuManagementPage = () => {
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
             >
               {filteredItems.map((item) => (
                 <Motion.div
@@ -646,7 +646,7 @@ const MenuManagementPage = () => {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-6 w-full max-w-md relative z-10 shadow-2xl"
+              className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md md:max-w-lg mx-4 max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl"
             >
               <div className="flex justify-between items-center mb-6 border-b border-[#1e3a5f]/50 pb-4">
                 <h3 className="text-2xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>Add Category</h3>
@@ -755,9 +755,9 @@ const MenuManagementPage = () => {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl w-full max-w-3xl relative z-10 shadow-2xl flex flex-col max-h-[90vh]"
+              className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl w-full max-w-sm sm:max-w-md md:max-w-lg mx-4 relative z-10 shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex justify-between items-center p-6 border-b border-[#1e3a5f]">
+              <div className="flex justify-between items-center p-4 sm:p-6 border-b border-[#1e3a5f]">
                 <h3 className="text-2xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>Add Menu Item</h3>
                 <button 
                   onClick={() => {
@@ -770,7 +770,7 @@ const MenuManagementPage = () => {
                 </button>
               </div>
 
-              <div className="p-6 overflow-y-auto custom-scrollbar">
+              <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar">
                 <form id="item-form" className="space-y-8" onSubmit={handleCreateMenuItem}>
                   
                   {/* Image Upload */}
@@ -1022,7 +1022,7 @@ const MenuManagementPage = () => {
               </div>
 
               {/* Modal Footer */}
-              <div className="p-6 border-t border-[#1e3a5f] bg-[#0f2040] rounded-b-2xl flex justify-end gap-3 shrink-0">
+              <div className="p-4 sm:p-6 border-t border-[#1e3a5f] bg-[#0f2040] rounded-b-2xl flex justify-end gap-3 shrink-0">
                 <button 
                   type="button"
                   onClick={() => {

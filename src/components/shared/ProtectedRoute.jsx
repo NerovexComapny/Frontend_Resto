@@ -1,5 +1,5 @@
-const React = require('react');
-const { Navigate } = require('react-router-dom');
+import React from 'react';
+import { Navigate } from 'react-router-dom';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const token = localStorage.getItem('token');
@@ -23,4 +23,4 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   return children;
 };
 
-module.exports = ProtectedRoute;
+export default ProtectedRoute;

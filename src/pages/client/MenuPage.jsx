@@ -14,7 +14,7 @@ import X from 'lucide-react/dist/esm/icons/x';
 import Store from 'lucide-react/dist/esm/icons/store';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import api, { publicApi } from '../../services/api';
+import { publicApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import backgroundImg from '../../assets/background.png';
 import logo from '../../assets/logo.webp';
@@ -306,7 +306,7 @@ const MenuPage = () => {
           setTrackedOrderStatus(nextStatus);
           setTrackedOrderDetails(details || '');
         }
-      } catch (error) {
+      } catch {
         // Silently fail, it will retry on next poll
       }
     };
@@ -502,7 +502,7 @@ const MenuPage = () => {
 
       <div className="relative z-10">
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-[#c9963a]/20 shadow-sm">
-          <div className="px-4 py-4 flex items-center justify-between">
+          <div className="px-4 py-4 flex items-center justify-between w-full md:max-w-2xl md:mx-auto">
             <div className="flex items-center gap-3 min-w-0">
               <img src={logo} alt="ليالي قرطاج" className="w-10 h-10 object-contain" />
               <div className="min-w-0">
@@ -534,7 +534,7 @@ const MenuPage = () => {
           </div>
         </div>
 
-        <div className="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+        <div className="px-4 pb-2 flex flex-nowrap md:flex-wrap gap-2 overflow-x-auto md:overflow-visible no-scrollbar">
           {menuCategories.map((category) => {
             const isActive = activeCategory === category.id;
             return (
@@ -556,7 +556,7 @@ const MenuPage = () => {
           })}
         </div>
 
-        <div className="px-4 mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="px-4 mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
           {menuLoading && (
             <div className="col-span-full bg-white/80 border border-[#c9963a]/20 rounded-2xl p-8 text-center text-[#0a1628]/70">
               <div className="mx-auto h-7 w-7 rounded-full border-2 border-[#c9963a]/30 border-t-[#c9963a] animate-spin" />
@@ -576,7 +576,7 @@ const MenuPage = () => {
                 transition={{ delay: index * 0.03 }}
                 className={`bg-white/80 backdrop-blur rounded-2xl shadow-sm border border-[#c9963a]/20 overflow-hidden flex flex-col ${item.isAvailable ? '' : 'grayscale opacity-60'}`}
               >
-                <div className="h-28 relative">
+                <div className="h-24 sm:h-32 md:h-40 relative">
                   {itemImage ? (
                     <img src={itemImage} alt={item.name} className="w-full h-full object-cover" />
                   ) : (
@@ -587,11 +587,11 @@ const MenuPage = () => {
                 </div>
 
                 <div className="p-3 flex flex-col flex-1">
-                  <h3 className="font-bold text-[#0a1628] text-sm line-clamp-1">{item.name}</h3>
+                  <h3 className="font-bold text-[#0a1628] text-sm md:text-base line-clamp-1">{item.name}</h3>
                   <p dir="rtl" className="text-[11px] text-[#0a1628]/60 mt-1 line-clamp-1">{item.nameAr}</p>
 
                   <div className="mt-3 flex items-center justify-between gap-2">
-                    <span className="font-bold text-[#c9963a] text-sm">{item.price.toFixed(3)} TND</span>
+                    <span className="font-bold text-[#c9963a] text-xs md:text-sm">{item.price.toFixed(3)} TND</span>
 
                     {item.isAvailable ? (
                       quantity > 0 ? (
@@ -648,7 +648,7 @@ const MenuPage = () => {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-6 left-0 right-0 px-4 z-40"
+            className="fixed bottom-4 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-64 z-40"
           >
             <button
               onClick={() => setIsCartOpen(true)}
@@ -685,7 +685,7 @@ const MenuPage = () => {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 24, stiffness: 220 }}
-              className="relative bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+              className="relative w-full md:max-w-md md:mx-auto bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
             >
               <div className="p-5 border-b border-[#0a1628]/10 flex items-center justify-between">
                 <h2 className="text-xl font-bold text-[#0a1628]">{t('clientMenu.yourOrder')}</h2>

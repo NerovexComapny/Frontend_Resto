@@ -306,10 +306,10 @@ const CashierPage = () => {
       </header>
 
       {/* Main Terminal Layout */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
         
         {/* --- LEFT PANEL (60%) --- */}
-        <section className="w-[60%] flex flex-col h-full border-r border-[#1e3a5f] bg-[#0a1628]">
+        <section className="w-full lg:w-[60%] flex flex-col h-auto lg:h-full lg:border-r border-[#1e3a5f] bg-[#0a1628]">
           
           <div className="p-6 shrink-0 border-b border-[#132845]">
             <h2 className="text-xl font-bold text-slate-200 mb-4 tracking-wider uppercase">Active Orders</h2>
@@ -349,7 +349,7 @@ const CashierPage = () => {
                     exit={{ opacity: 0, scale: 0.95 }}
                     key={order._id}
                     onClick={() => setSelectedOrder(order)}
-                    className={"cursor-pointer group flex items-center justify-between p-5 rounded-2xl border-2 transition-all duration-200 " + (isSelected ? "bg-[#132845] border-[#7c6af7] shadow-[0_0_20px_rgba(124, 106, 247, 0.2)]" : "bg-[#0d1f3c] border-[#1e3a5f] hover:border-slate-600")}
+                    className={"cursor-pointer group flex items-center justify-between p-4 text-base rounded-2xl border-2 transition-all duration-200 " + (isSelected ? "bg-[#132845] border-[#7c6af7] shadow-[0_0_20px_rgba(124, 106, 247, 0.2)]" : "bg-[#0d1f3c] border-[#1e3a5f] hover:border-slate-600")}
                   >
                     <div className="flex items-center space-x-6">
                       <div className={"w-14 h-14 rounded-xl flex items-center justify-center font-bold text-2xl " + (isSelected ? "bg-[#7c6af7] text-[#0d1f3c]" : "bg-[#132845] text-[#7c6af7]")}>
@@ -388,7 +388,7 @@ const CashierPage = () => {
         </section>
 
         {/* --- RIGHT PANEL (40%) --- */}
-        <section className="w-[40%] bg-[#0d1f3c] flex flex-col h-full shadow-2xl relative">
+        <section className={`w-full lg:w-[40%] bg-[#0d1f3c] flex-col h-auto lg:h-full shadow-2xl relative ${selectedOrder ? 'flex' : 'hidden lg:flex'}`}>
           
           {/* Success Overlay */}
           <AnimatePresence>
@@ -461,13 +461,13 @@ const CashierPage = () => {
                 {/* Total */}
                 <div className="flex justify-between items-end mb-8 bg-[#132845] p-5 rounded-2xl border border-[#1e3a5f]">
                   <span className="text-slate-400 text-lg font-bold uppercase tracking-widest">Total Due</span>
-                  <span className="text-5xl font-black text-[#7c6af7] drop-shadow-[0_0_15px_rgba(124, 106, 247, 0.2)]" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  <span className="text-3xl md:text-5xl font-black text-[#7c6af7] drop-shadow-[0_0_15px_rgba(124, 106, 247, 0.2)]" style={{ fontFamily: "'Playfair Display', serif" }}>
                     {selectedOrder.totalAmount.toFixed(2)} TND
                   </span>
                 </div>
 
                 {/* Method Toggles */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-2 gap-3 mb-6">
                   <button 
                     onClick={() => setPaymentMethod('cash')}
                     className={"flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all " + (paymentMethod === 'cash' ? "bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)]" : "bg-[#132845] border-[#1e3a5f] text-slate-400 hover:border-slate-500")}
@@ -488,7 +488,7 @@ const CashierPage = () => {
                 <button 
                   onClick={handleConfirmPayment}
                   disabled={isProcessing}
-                  className="w-full bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] font-extrabold text-2xl py-6 rounded-2xl shadow-[0_0_20px_rgba(124, 106, 247, 0.2)] active:scale-[0.98] transition-all flex justify-center items-center gap-3 disabled:opacity-70 disabled:active:scale-100 disabled:cursor-not-allowed uppercase tracking-widest"
+                  className="w-full bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] font-extrabold text-lg md:text-2xl py-4 md:py-6 rounded-2xl shadow-[0_0_20px_rgba(124, 106, 247, 0.2)] active:scale-[0.98] transition-all flex justify-center items-center gap-3 disabled:opacity-70 disabled:active:scale-100 disabled:cursor-not-allowed uppercase tracking-widest"
                 >
                   {isProcessing ? (
                     <Motion.div

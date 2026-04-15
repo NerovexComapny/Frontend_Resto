@@ -68,11 +68,11 @@ const LoginPage = () => {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7 }}
-        className="bg-[#0d1f3c]/80 backdrop-blur-xl border border-[#0000003A]/30 rounded-2xl p-8 w-full max-w-md shadow-2xl z-10 relative"
+        className="bg-[#0d1f3c]/80 backdrop-blur-xl border border-[#0000003A]/30 rounded-2xl p-6 sm:p-8 md:p-10 w-full max-w-sm sm:max-w-md mx-4 shadow-2xl z-10 relative"
       >
-        <img src={logo} alt="ليالي قرطاج" className="w-24 h-24 mx-auto mb-4 object-contain" />
+        <img src={logo} alt="ليالي قرطاج" className="w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 object-contain" />
 
-        <h1 dir="rtl" className="text-3xl font-bold text-[#0B95E6] text-center font-serif mb-1">
+        <h1 dir="rtl" className="text-2xl md:text-3xl font-bold text-[#0B95E6] text-center font-serif mb-1">
           ليالي قرطاج
         </h1>
         <p className="text-sm text-[#94a3b8] text-center mb-8">{t('common.fineCuisine')}</p>
@@ -84,7 +84,7 @@ const LoginPage = () => {
               <input
                 type="email"
                 placeholder={t('auth.email')}
-                className={`w-full pl-10 pr-4 py-3 bg-[#132845] border rounded-xl text-[#f0f4f8] placeholder:text-[#94a3b8] outline-none focus:border-[#7c6af7] focus:ring-1 focus:ring-[#7c6af7] ${errors.email ? 'border-red-400' : 'border-[#1e3a5f]'}`}
+                className={`w-full text-base py-3 px-4 pl-10 bg-[#132845] border rounded-xl text-[#f0f4f8] placeholder:text-[#94a3b8] outline-none focus:border-[#7c6af7] focus:ring-1 focus:ring-[#7c6af7] ${errors.email ? 'border-red-400' : 'border-[#1e3a5f]'}`}
                 {...register('email', { required: t('auth.emailRequired') })}
               />
             </div>
@@ -97,7 +97,7 @@ const LoginPage = () => {
               <input
                 type={showPassword ? 'text' : 'password'}
                 placeholder={t('auth.password')}
-                className={`w-full pl-10 pr-12 py-3 bg-[#132845] border rounded-xl text-[#f0f4f8] placeholder:text-[#94a3b8] outline-none focus:border-[#7c6af7] focus:ring-1 focus:ring-[#7c6af7] ${errors.password ? 'border-red-400' : 'border-[#1e3a5f]'}`}
+                className={`w-full text-base py-3 px-4 pl-10 pr-12 bg-[#132845] border rounded-xl text-[#f0f4f8] placeholder:text-[#94a3b8] outline-none focus:border-[#7c6af7] focus:ring-1 focus:ring-[#7c6af7] ${errors.password ? 'border-red-400' : 'border-[#1e3a5f]'}`}
                 {...register('password', { required: t('auth.passwordRequired') })}
               />
               <button
@@ -114,7 +114,7 @@ const LoginPage = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-[#0B95E6] hover:bg-[#160774] text-[#0a1628] font-bold rounded-xl py-3 transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-[#0B95E6] hover:bg-[#160774] text-[#0a1628] text-base font-bold rounded-xl py-3 transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isSubmitting ? (
               <>

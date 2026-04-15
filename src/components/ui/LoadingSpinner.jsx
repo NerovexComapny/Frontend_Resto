@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 
 const sizes = {
@@ -11,13 +11,13 @@ const sizes = {
 
 const LoadingSpinner = ({ size = 'md', className = '' }) => {
   return (
-    <motion.div
+    <Motion.div
       animate={{ rotate: 360 }}
       transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
       className={`text-amber-500 inline-flex ${sizes[size]} ${className}`}
     >
       <Loader2 className="w-full h-full" />
-    </motion.div>
+    </Motion.div>
   );
 };
 

@@ -295,17 +295,17 @@ const DashboardPage = () => {
     <ManagerLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
             {t('manager.dashboard.title')}
           </h2>
-          <div className="text-sm text-slate-400 bg-[#0d1f3c] px-4 py-2 border border-[#1e3a5f] rounded-lg">
+          <div className="hidden md:block text-sm text-slate-400 bg-[#0d1f3c] px-4 py-2 border border-[#1e3a5f] rounded-lg">
             {new Date().toLocaleDateString(i18n.language, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
         </div>
 
         {/* Stats Grid */}
         <Motion.div 
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
@@ -316,7 +316,7 @@ const DashboardPage = () => {
               <Motion.div 
                 key={index}
                 variants={itemVariants}
-                className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-6 flex flex-col shadow-sm"
+                className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-4 md:p-6 flex flex-col shadow-sm"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className={`p-3 rounded-xl border ${stat.bg} ${stat.color} ${stat.border}`}>
@@ -334,7 +334,7 @@ const DashboardPage = () => {
         </Motion.div>
 
         {/* Bottom Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Recent Orders - 2 Columns wide on LG */}
           <Motion.div 
             className="lg:col-span-2 bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-6"
@@ -343,21 +343,21 @@ const DashboardPage = () => {
             transition={{ delay: 0.4 }}
           >
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>{t('manager.dashboard.recentOrders')}</h3>
+              <h3 className="text-lg md:text-xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>{t('manager.dashboard.recentOrders')}</h3>
               <button className="text-sm text-[#7c6af7] hover:text-[#9d94fa] transition-colors">{t('manager.dashboard.viewAll')}</button>
             </div>
             
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-[#1e3a5f] text-slate-400 text-sm">
+                  <tr className="border-b border-[#1e3a5f] text-slate-400 text-xs md:text-sm">
                     <th className="pb-3 font-medium">{t('common.orderId')}</th>
                     <th className="pb-3 font-medium">{t('common.table')}</th>
                     <th className="pb-3 font-medium">{t('common.amount')}</th>
                     <th className="pb-3 font-medium text-right">{t('common.status')}</th>
                   </tr>
                 </thead>
-                <tbody className="text-sm">
+                <tbody className="text-xs md:text-sm">
                   {recentOrders.map((order, idx) => (
                     <tr key={idx} className="border-b border-[#1e3a5f]/50 last:border-0 hover:bg-[#132845]/50 transition-colors">
                       <td className="py-4 font-medium text-slate-200">{order.id}</td>
@@ -383,8 +383,8 @@ const DashboardPage = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
           >
-            <h3 className="text-xl font-bold text-slate-100 mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>{t('manager.dashboard.revenue7Days')}</h3>
-            <div className="h-64 w-full">
+            <h3 className="text-lg md:text-xl font-bold text-slate-100 mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>{t('manager.dashboard.revenue7Days')}</h3>
+            <div className="h-48 md:h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={revenueData}>
                   <XAxis 

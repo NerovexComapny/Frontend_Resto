@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import Search from 'lucide-react/dist/esm/icons/search';
 import Filter from 'lucide-react/dist/esm/icons/filter';
 import Plus from 'lucide-react/dist/esm/icons/plus';
@@ -118,9 +118,9 @@ const StaffPage = () => {
       <div className="space-y-6">
         
         {/* Header & Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
           <div>
-            <h2 className="text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
               Staff Management
             </h2>
             <p className="text-slate-400 mt-1">Manage your restaurant personnel and roles.</p>
@@ -128,7 +128,7 @@ const StaffPage = () => {
           
           <button 
             onClick={() => handleOpenModal()}
-            className="flex items-center justify-center space-x-2 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] px-4 py-2.5 rounded-xl font-semibold transition-colors"
+            className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] px-4 py-2.5 rounded-xl font-semibold transition-colors"
           >
             <Plus className="w-5 h-5" />
             <span>Add Staff Member</span>
@@ -136,8 +136,8 @@ const StaffPage = () => {
         </div>
 
         {/* Filters */}
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="flex flex-col sm:flex-row gap-4 bg-[#132845] p-4 rounded-2xl border border-[#1e3a5f]">
-          <div className="relative flex-1">
+        <Motion.div variants={containerVariants} initial="hidden" animate="visible" className="flex flex-col sm:flex-row gap-3 bg-[#132845] p-4 rounded-2xl border border-[#1e3a5f]">
+          <div className="relative w-full max-w-full sm:max-w-xs">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
             <input 
               type="text" 
@@ -147,7 +147,7 @@ const StaffPage = () => {
               className="w-full pl-12 pr-4 py-2.5 bg-[#0d1f3c] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-[#c9963a] focus:ring-1 focus:ring-amber-500 transition-colors"
             />
           </div>
-          <div className="relative w-full sm:w-48">
+          <div className="relative w-full sm:w-auto">
             <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
             <select 
               value={filterRole}
@@ -161,31 +161,31 @@ const StaffPage = () => {
               <option value="cook">Cook</option>
             </select>
           </div>
-        </motion.div>
+        </Motion.div>
 
         {/* Staff Table */}
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="bg-[#132845] border border-[#1e3a5f] rounded-2xl overflow-hidden shadow-sm">
+        <Motion.div variants={containerVariants} initial="hidden" animate="visible" className="bg-[#132845] border border-[#1e3a5f] rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-left text-xs md:text-sm">
               <thead className="bg-[#0d1f3c] text-slate-400 text-xs uppercase font-semibold">
                 <tr>
-                  <th className="px-6 py-4">Employee</th>
-                  <th className="px-6 py-4">Contact</th>
-                  <th className="px-6 py-4">Role</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  <th className="px-3 md:px-6 py-4">Employee</th>
+                  <th className="px-3 md:px-6 py-4">Contact</th>
+                  <th className="px-3 md:px-6 py-4">Role</th>
+                  <th className="hidden md:table-cell px-3 md:px-6 py-4">Status</th>
+                  <th className="px-3 md:px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1e3a5f]">
                 {filteredStaff.map((person, i) => {
                   const styles = getRoleStyle(person.role);
                   return (
-                    <motion.tr 
+                    <Motion.tr 
                       key={person._id}
                       initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
                       className="hover:bg-[#0d1f3c]/50 transition-colors group"
                     >
-                      <td className="px-6 py-4">
+                      <td className="px-3 md:px-6 py-4">
                         <div className="flex items-center space-x-4">
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${styles.avatar}`}>
                             {getInitials(person.name)}
@@ -196,29 +196,29 @@ const StaffPage = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 md:px-6 py-4">
                         <div className="space-y-1">
                           <div className="flex items-center space-x-2 text-slate-300">
                             <Mail className="w-3.5 h-3.5 text-slate-500" />
                             <span>{person.email}</span>
                           </div>
-                          <div className="flex items-center space-x-2 text-slate-400 text-xs">
+                          <div className="hidden md:flex items-center space-x-2 text-slate-400 text-xs">
                             <Phone className="w-3.5 h-3.5 text-slate-500" />
                             <span>{person.phone}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 md:px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${styles.badge}`}>
                           {person.role}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="hidden md:table-cell px-3 md:px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${person.isActive ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20'}`}>
                           {person.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-3 md:px-6 py-4 text-right">
                         <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={() => handleOpenModal(person)}
@@ -235,12 +235,12 @@ const StaffPage = () => {
                           </button>
                         </div>
                       </td>
-                    </motion.tr>
+                    </Motion.tr>
                   );
                 })}
                 {filteredStaff.length === 0 && (
                   <tr>
-                    <td colSpan="5" className="px-6 py-12 text-center text-slate-400">
+                    <td colSpan="5" className="px-3 md:px-6 py-12 text-center text-slate-400">
                       No staff members found matching your filters.
                     </td>
                   </tr>
@@ -248,22 +248,22 @@ const StaffPage = () => {
               </tbody>
             </table>
           </div>
-        </motion.div>
+        </Motion.div>
 
         {/* Add/Edit Modal */}
         <AnimatePresence>
           {isModalOpen && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-              <motion.div 
+              <Motion.div 
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="absolute inset-0 bg-black/80 backdrop-blur-sm"
                 onClick={handleCloseModal}
               />
-              <motion.div 
+              <Motion.div 
                 variants={modalVariants} initial="hidden" animate="visible" exit="exit"
-                className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl w-full max-w-lg relative z-10 shadow-2xl flex flex-col max-h-[90vh]"
+                className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl w-full max-w-sm sm:max-w-md md:max-w-lg mx-4 relative z-10 shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto"
               >
-                <div className="flex justify-between items-center p-6 border-b border-[#1e3a5f]">
+                <div className="flex justify-between items-center p-4 sm:p-6 border-b border-[#1e3a5f]">
                   <h3 className="text-2xl font-bold text-slate-100 flex items-center space-x-2" style={{ fontFamily: "'Playfair Display', serif" }}>
                     <Shield className="w-6 h-6 text-[#c9963a]" />
                     <span>{editingStaff ? 'Edit Staff Member' : 'Add Staff Member'}</span>
@@ -273,7 +273,7 @@ const StaffPage = () => {
                   </button>
                 </div>
 
-                <div className="p-6 overflow-y-auto">
+                <div className="p-4 sm:p-6 overflow-y-auto">
                   <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); handleCloseModal(); }}>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -362,7 +362,7 @@ const StaffPage = () => {
                     </div>
                   </form>
                 </div>
-              </motion.div>
+              </Motion.div>
             </div>
           )}
         </AnimatePresence>

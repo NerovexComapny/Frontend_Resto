@@ -235,9 +235,9 @@ const TablesPage = () => {
       <div className="space-y-6">
         
         {/* Header Options */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
           <div>
-            <h2 className="text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
               {t('manager.tables.title')}
             </h2>
             <p className="text-slate-400 mt-1 capitalize text-sm">
@@ -247,11 +247,11 @@ const TablesPage = () => {
             </p>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row w-full sm:w-auto items-stretch sm:items-center gap-2">
             <button
               onClick={handleRegenerateAllQrs}
               disabled={isRegeneratingQrs}
-              className="flex items-center justify-center space-x-2 bg-[#132845] hover:bg-[#1e3a5f] disabled:opacity-60 disabled:cursor-not-allowed text-slate-200 px-4 py-2.5 rounded-xl font-semibold transition-colors border border-[#1e3a5f]"
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-[#132845] hover:bg-[#1e3a5f] disabled:opacity-60 disabled:cursor-not-allowed text-slate-200 px-4 py-2.5 rounded-xl font-semibold transition-colors border border-[#1e3a5f]"
             >
               <QrCode className="w-5 h-5" />
               <span>{isRegeneratingQrs ? t('manager.tables.regeneratingQr') : t('manager.tables.regenerateAllQr')}</span>
@@ -259,7 +259,7 @@ const TablesPage = () => {
 
             <button 
               onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center justify-center space-x-2 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] px-4 py-2.5 rounded-xl font-semibold transition-colors"
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-[#7c6af7] hover:bg-[#6557e0] text-[#0d1f3c] px-4 py-2.5 rounded-xl font-semibold transition-colors"
             >
               <Plus className="w-5 h-5" />
               <span>{t('manager.tables.addTable')}</span>
@@ -272,7 +272,7 @@ const TablesPage = () => {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
+          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6"
         >
           {loading && (
             <div className="col-span-full min-h-[40vh] flex items-center justify-center">
@@ -366,7 +366,7 @@ const TablesPage = () => {
               />
               <Motion.div 
                 variants={modalVariants} initial="hidden" animate="visible" exit="exit"
-                className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-6 w-full max-w-sm relative z-10 shadow-2xl"
+                className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md md:max-w-lg mx-4 max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl"
               >
                 <div className="flex justify-between items-center mb-6 border-b border-[#1e3a5f]/50 pb-4">
                   <h3 className="text-2xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>{t('manager.tables.addTable')}</h3>
@@ -434,7 +434,7 @@ const TablesPage = () => {
               />
               <Motion.div
                 variants={modalVariants} initial="hidden" animate="visible" exit="exit"
-                className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-6 w-full max-w-sm relative z-10 shadow-2xl"
+                className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md md:max-w-lg mx-4 max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl"
               >
                 <div className="flex justify-between items-center mb-6 border-b border-[#1e3a5f]/50 pb-4">
                   <h3 className="text-2xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>{t('manager.tables.editTable')}</h3>
@@ -505,9 +505,9 @@ const TablesPage = () => {
               />
               <Motion.div 
                 variants={modalVariants} initial="hidden" animate="visible" exit="exit"
-                className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl overflow-hidden w-full max-w-sm relative z-10 shadow-2xl flex flex-col"
+                className="bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl w-full max-w-sm sm:max-w-md md:max-w-lg mx-4 max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl flex flex-col"
               >
-                <div className="flex justify-between items-center p-5 bg-[#132845]/50 border-b border-[#1e3a5f]">
+                <div className="flex justify-between items-center p-4 sm:p-6 bg-[#132845]/50 border-b border-[#1e3a5f]">
                   <h3 className="text-lg font-bold text-slate-100 flex items-center space-x-2">
                     <QrCode className="w-5 h-5 text-[#7c6af7]" />
                     <span>{t('manager.tables.tableAccess', { number: selectedQrTable.number })}</span>
@@ -517,8 +517,8 @@ const TablesPage = () => {
                   </button>
                 </div>
                 
-                <div className="p-8 flex flex-col items-center justify-center bg-white">
-                  {/* Embedded styled QR code mock from api */}
+                <div className="p-4 sm:p-6 flex flex-col items-center justify-center bg-white">
+                  {/* QR code image from API */}
                   <img 
                     src={selectedQrTable.qrCode} 
                     alt={`QR Code for Table ${selectedQrTable.number}`}
@@ -529,7 +529,7 @@ const TablesPage = () => {
                   </p>
                 </div>
 
-                <div className="p-5 border-t border-[#1e3a5f] bg-[#0f2040] flex gap-3">
+                <div className="p-4 sm:p-6 border-t border-[#1e3a5f] bg-[#0f2040] flex gap-3">
                   <button
                     onClick={() => handleDownloadQR(selectedQrTable)}
                     className="flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 bg-[#132845] border border-[#1e3a5f] hover:bg-[#1e3a5f] text-slate-300 rounded-xl font-medium transition-colors"

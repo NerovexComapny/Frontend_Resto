@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import Search from 'lucide-react/dist/esm/icons/search';
 import Filter from 'lucide-react/dist/esm/icons/filter';
 import Calendar from 'lucide-react/dist/esm/icons/calendar';
@@ -124,7 +124,7 @@ const OrdersPage = () => {
       socket.off('order_updated', handleOrderStatusUpdated);
       socket.off('order_ready', handleOrderStatusUpdated);
     };
-  }, [user?.restaurant]);
+  }, [t, user?.restaurant]);
 
   const summaryCounts = useMemo(() => {
     return {
@@ -259,12 +259,12 @@ const OrdersPage = () => {
   return (
     <ManagerLayout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h2 className="text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-100" style={{ fontFamily: "'Playfair Display', serif" }}>
             {t('manager.orders.title')}
           </h2>
 
-          <div className="flex items-center space-x-2 bg-[#0d1f3c] px-4 py-2 border border-[#1e3a5f] rounded-xl text-sm font-medium text-[#7c6af7]">
+          <div className="w-full sm:w-auto flex items-center justify-center sm:justify-start space-x-2 bg-[#0d1f3c] px-4 py-2 border border-[#1e3a5f] rounded-xl text-sm font-medium text-[#7c6af7]">
             <div className="w-2 h-2 rounded-full bg-[#7c6af7] animate-pulse"></div>
             <span>{t('manager.orders.monitoring', { count: orders.length })}</span>
           </div>
@@ -297,8 +297,8 @@ const OrdersPage = () => {
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-4 items-center justify-between bg-[#0d1f3c] p-4 rounded-2xl border border-[#1e3a5f]">
-          <div className="relative w-full lg:max-w-xs">
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-[#0d1f3c] p-4 rounded-2xl border border-[#1e3a5f]">
+          <div className="relative w-full max-w-full sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
             <input
               type="text"
@@ -309,8 +309,8 @@ const OrdersPage = () => {
             />
           </div>
 
-          <div className="flex w-full lg:w-auto gap-4">
-            <div className="relative flex-1 lg:w-48">
+          <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
+            <div className="relative w-full sm:w-48">
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
               <select
                 value={statusFilter}
@@ -331,7 +331,7 @@ const OrdersPage = () => {
               </select>
             </div>
 
-            <div className="relative flex-1 lg:w-48">
+            <div className="relative w-full sm:w-48">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
               <input
                 type="date"
@@ -343,11 +343,11 @@ const OrdersPage = () => {
           </div>
         </div>
 
-        <motion.div
+        <Motion.div
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
         >
           <AnimatePresence mode="popLayout">
             {filteredOrders.map((order) => {
@@ -355,7 +355,7 @@ const OrdersPage = () => {
               const canCancel = order.status === 'pending' || order.status === 'confirmed';
 
               return (
-                <motion.div
+                <Motion.div
                   layout
                   key={order._id}
                   variants={cardVariants}
@@ -410,42 +410,42 @@ const OrdersPage = () => {
                       <span className="text-lg font-bold text-slate-100">{order.totalAmount.toFixed(2)} TND</span>
                     </div>
                   </div>
-                </motion.div>
+                </Motion.div>
               );
             })}
 
             {filteredOrders.length === 0 && (
-              <motion.div
+              <Motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="col-span-full py-12 flex flex-col items-center justify-center text-slate-500 bg-[#0d1f3c] rounded-2xl border border-[#1e3a5f] border-dashed"
               >
                 <Utensils className="w-12 h-12 mb-4 opacity-50" />
                 <p className="text-lg font-medium">{t('manager.orders.noOrdersFound')}</p>
-              </motion.div>
+              </Motion.div>
             )}
           </AnimatePresence>
-        </motion.div>
+        </Motion.div>
       </div>
 
       <AnimatePresence>
         {cancelTarget && (
-          <motion.div
+          <Motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={closeCancelModal}
           >
-            <motion.div
+            <Motion.div
               initial={{ opacity: 0, y: 16, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.97 }}
               transition={{ type: 'spring', stiffness: 220, damping: 24 }}
-              className="w-full max-w-md bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl shadow-2xl"
+              className="w-full max-w-sm sm:max-w-md md:max-w-lg mx-4 max-h-[90vh] overflow-y-auto bg-[#0d1f3c] border border-[#1e3a5f] rounded-2xl shadow-2xl"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="p-5 border-b border-[#1e3a5f] flex items-center justify-between">
+              <div className="p-4 sm:p-6 border-b border-[#1e3a5f] flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="w-9 h-9 rounded-full bg-red-500/15 text-red-400 flex items-center justify-center">
                     <AlertTriangle className="w-5 h-5" />
@@ -460,7 +460,7 @@ const OrdersPage = () => {
                 </button>
               </div>
 
-              <div className="p-5 space-y-5">
+              <div className="p-4 sm:p-6 space-y-5">
                 <p className="text-slate-300">{t('manager.orders.confirmCancelPrompt')}</p>
                 <div className="text-sm text-slate-400 bg-[#132845] border border-[#1e3a5f] rounded-xl p-3">
                   <span className="font-semibold text-slate-200">{cancelTarget.orderNumber}</span> • {t('common.table')} {cancelTarget.table.number}
@@ -481,8 +481,8 @@ const OrdersPage = () => {
                   </button>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
+            </Motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
     </ManagerLayout>

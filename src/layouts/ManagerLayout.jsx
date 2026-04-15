@@ -9,7 +9,7 @@ import BarChart2 from 'lucide-react/dist/esm/icons/bar-chart-2';
 import LogOut from 'lucide-react/dist/esm/icons/log-out';
 import Menu from 'lucide-react/dist/esm/icons/menu';
 import X from 'lucide-react/dist/esm/icons/x';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../store/authStore';
 import logo from '../assets/logo.webp';
@@ -53,18 +53,18 @@ const ManagerLayout = ({ children }) => {
     <div className="min-h-screen bg-[#0a1628] text-slate-100 flex font-sans">
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <motion.div 
+        <Motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm"
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={toggleMobileMenu}
         />
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed lg:sticky top-0 left-0 z-50 h-screen w-72 bg-[#0d1f3c] border-r border-[#1e3a5f] flex flex-col transition-transform duration-300 ease-in-out ${
-        isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
+      <aside className={`fixed lg:sticky top-0 left-0 z-50 h-screen w-72 transform transition-transform duration-300 lg:translate-x-0 bg-[#0d1f3c] border-r border-[#1e3a5f] flex flex-col ${
+        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         {/* Logo */}
         <div className="p-6 flex items-center space-x-3">
@@ -123,9 +123,9 @@ const ManagerLayout = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto w-full">
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Mobile Header */}
-        <header className="lg:hidden flex items-center justify-between p-4 bg-[#0d1f3c] border-b border-[#1e3a5f] sticky top-0 z-30 shadow-md">
+        <header className="flex lg:hidden items-center justify-between p-4 bg-[#0d1f3c] border-b border-[#1e3a5f] sticky top-0 z-30">
           <div className="flex items-center space-x-2">
             <img src={logo} alt="ليالي قرطاج" className="w-8 h-8 object-contain" />
             <h1 className="text-xl font-bold text-[#7c6af7]" style={{ fontFamily: "'Playfair Display', serif" }} dir="rtl">
@@ -144,7 +144,7 @@ const ManagerLayout = ({ children }) => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 lg:p-8">
+        <main className="flex-1 p-4 md:p-6 lg:p-8">
           {children}
         </main>
       </div>
