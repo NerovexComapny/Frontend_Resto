@@ -10,6 +10,7 @@ import Calculator from 'lucide-react/dist/esm/icons/calculator';
 import Printer from 'lucide-react/dist/esm/icons/printer';
 import Download from 'lucide-react/dist/esm/icons/download';
 import { loadStripe } from '@stripe/stripe-js';
+import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import { connectSocket } from '../../services/socket';
 import useAuthStore from '../../store/authStore';
@@ -35,8 +36,15 @@ const toId = (value) => {
   return String(value);
 };
 
-const isUnpaidActiveOrder = (order) => {
-  return order?.paymentStatus === 'unpaid' && order?.status !== 'cancelled';
+const PAYABLE_ORDER_STATUSES = new Set(['ready', 'served']);
+
+const isUnpaidPayableOrder = (order) => {
+  const status = String(order?.status || '').toLowerCase();
+  const paymentStatus = String(order?.paymentStatus || '').toLowerCase();
+
+  return paymentStatus !== 'paid'
+    && status !== 'cancelled'
+    && PAYABLE_ORDER_STATUSES.has(status);
 };
 
 const buildPaymentStatusByOrderId = (payments) => {
@@ -113,7 +121,7 @@ const CashierPage = () => {
       setLoading(true);
       try {
         const [ordersResponse, paymentsResponse] = await Promise.all([
-          api.get(`${ordersEndpoint}?status=ready`),
+          api.get(ordersEndpoint),
           api.get(paymentsEndpoint),
         ]);
 
@@ -128,7 +136,7 @@ const CashierPage = () => {
 
         const paymentStatusByOrderId = buildPaymentStatusByOrderId(apiPayments);
 
-        const readyUnpaidOrders = apiOrders
+        const payableUnpaidOrders = apiOrders
           .filter((order) => {
             const orderId = toId(order?._id);
             const paymentStatusFromOrder = String(order?.paymentStatus || '').toLowerCase();
@@ -137,11 +145,11 @@ const CashierPage = () => {
             if (paymentStatusFromOrder === 'paid') return false;
             if (paymentStatusFromPayments === 'completed') return false;
 
-            return isUnpaidActiveOrder(order);
+            return isUnpaidPayableOrder(order);
           })
           .map(normalizeOrder);
 
-        setOrders(readyUnpaidOrders);
+        setOrders(payableUnpaidOrders);
       } catch {
         if (isActive) {
           setOrders([]);
@@ -166,7 +174,13 @@ const CashierPage = () => {
 
       const incomingId = toId(incomingOrder._id);
 
-      if (incomingOrder.status !== 'ready' || incomingOrder.paymentStatus === 'paid') {
+      const incomingStatus = String(incomingOrder?.status || '').toLowerCase();
+      const incomingPaymentStatus = String(incomingOrder?.paymentStatus || '').toLowerCase();
+      const shouldRemoveFromCashierQueue = incomingPaymentStatus === 'paid'
+        || incomingStatus === 'cancelled'
+        || !PAYABLE_ORDER_STATUSES.has(incomingStatus);
+
+      if (shouldRemoveFromCashierQueue) {
         setOrders((prev) => prev.filter((order) => order._id !== incomingId));
         setSelectedOrder((prev) => (prev?._id === incomingId ? null : prev));
         return;
@@ -185,11 +199,13 @@ const CashierPage = () => {
     };
 
     socket.on('orderStatusUpdated', handleOrderStatusUpdated);
+    socket.on('order_updated', handleOrderStatusUpdated);
     socket.on('paymentCompleted', handlePaymentCompleted);
 
     return () => {
       isActive = false;
       socket.off('orderStatusUpdated', handleOrderStatusUpdated);
+      socket.off('order_updated', handleOrderStatusUpdated);
       socket.off('paymentCompleted', handlePaymentCompleted);
     };
   }, [ordersEndpoint, paymentsEndpoint, restaurantId]);
@@ -209,10 +225,14 @@ const CashierPage = () => {
     }
   }, [orders, selectedOrder, showSuccess]);
 
-  const filteredOrders = orders.filter(o => 
-    o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    String(o.table.number).includes(searchQuery)
-  );
+  const filteredOrders = orders.filter((order) => {
+    const normalizedQuery = String(searchQuery || '').toLowerCase();
+    const normalizedOrderNumber = String(order?.orderNumber || '').toLowerCase();
+    const normalizedTableNumber = String(order?.table?.number || '');
+
+    return normalizedOrderNumber.includes(normalizedQuery)
+      || normalizedTableNumber.includes(normalizedQuery);
+  });
 
   const fetchReceiptPdfBlob = async (orderId) => {
     const response = await api.get(`${paymentsEndpoint}/order/${orderId}/receipt/pdf`, {
@@ -247,8 +267,32 @@ const CashierPage = () => {
 
     const blob = await fetchReceiptPdfBlob(order._id);
     const blobUrl = URL.createObjectURL(blob);
-    window.open(blobUrl, '_blank', 'noopener,noreferrer');
+    const printWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+    if (!printWindow) {
+      URL.revokeObjectURL(blobUrl);
+      throw new Error('Popup blocked. Please allow popups to print receipts.');
+    }
     window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+  };
+
+  const handleReceiptPdfDownload = async (order) => {
+    try {
+      await downloadReceiptPdfForOrder(order);
+      setReceiptNotice('Facture exportee en PDF.');
+    } catch (error) {
+      setReceiptNotice('Export facture indisponible pour le moment.');
+      toast.error(error?.response?.data?.message || error?.message || 'Unable to export receipt');
+    }
+  };
+
+  const handleReceiptPrint = async (order) => {
+    try {
+      await openReceiptPrintPreview(order);
+      setReceiptNotice('Apercu impression ouvert.');
+    } catch (error) {
+      setReceiptNotice('Impression indisponible pour le moment.');
+      toast.error(error?.response?.data?.message || error?.message || 'Unable to print receipt');
+    }
   };
 
   const handleConfirmPayment = async () => {
@@ -327,11 +371,12 @@ const CashierPage = () => {
         setSuccessOrderNumber('');
         setPaymentMethod('cash');
       }, 3500);
-    } catch {
+    } catch (error) {
       setIsProcessing(false);
       setShowSuccess(false);
       setSuccessOrderNumber('');
       setReceiptNotice('');
+      toast.error(error?.response?.data?.message || error?.message || 'Payment confirmation failed');
     }
   };
 
@@ -384,7 +429,7 @@ const CashierPage = () => {
                   transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
                   className="w-10 h-10 border-4 border-[#7c6af7]/30 border-t-[#7c6af7] rounded-full mb-4"
                 />
-                <p className="text-base font-semibold uppercase tracking-widest">Loading Ready Orders...</p>
+                <p className="text-base font-semibold uppercase tracking-widest">Loading Payable Orders...</p>
               </div>
             ) : (
               <AnimatePresence>
@@ -432,7 +477,7 @@ const CashierPage = () => {
             {!loading && filteredOrders.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-50 mt-20">
                 <Receipt className="w-16 h-16 mb-4" />
-                <p className="text-xl font-bold uppercase tracking-widest">No ready unpaid orders</p>
+                <p className="text-xl font-bold uppercase tracking-widest">No unpaid orders awaiting payment</p>
               </div>
             )}
           </div>
@@ -465,14 +510,14 @@ const CashierPage = () => {
                 {lastReceiptOrder && (
                   <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
                     <button
-                      onClick={() => openReceiptPrintPreview(lastReceiptOrder)}
+                      onClick={() => handleReceiptPrint(lastReceiptOrder)}
                       className="px-4 py-2 rounded-lg bg-white/15 hover:bg-white/25 border border-white/40 text-white text-sm font-bold tracking-wide flex items-center gap-2"
                     >
                       <Printer className="w-4 h-4" />
                       Print Receipt
                     </button>
                     <button
-                      onClick={() => downloadReceiptPdfForOrder(lastReceiptOrder)}
+                      onClick={() => handleReceiptPdfDownload(lastReceiptOrder)}
                       className="px-4 py-2 rounded-lg bg-white text-emerald-600 hover:bg-emerald-50 border border-white text-sm font-bold tracking-wide flex items-center gap-2"
                     >
                       <Download className="w-4 h-4" />
