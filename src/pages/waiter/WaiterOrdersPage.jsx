@@ -38,6 +38,14 @@ const toId = (value) => {
   return String(value);
 };
 
+const getOrderWaiterId = (order) => {
+  return toId(order?.waiterId || order?.waiter);
+};
+
+const getOrderTableId = (order) => {
+  return toId(order?.tableId || order?.table);
+};
+
 const formatTimeAgo = (value, t) => {
   if (!value) return t('waiter.justNow');
 
@@ -120,7 +128,13 @@ const normalizeOrder = (order, t) => {
   };
 };
 
-const buildWaiterTables = (apiTables, waiterTableIds, orders, previousNeedsHelpById = {}) => {
+const buildWaiterTables = (
+  apiTables,
+  waiterTableIds,
+  orders,
+  previousNeedsHelpById = {},
+  waiterId = ''
+) => {
   const filteredTables = Array.isArray(apiTables)
     ? apiTables.filter((table) => waiterTableIds.has(toId(table?._id)))
     : [];
@@ -132,7 +146,8 @@ const buildWaiterTables = (apiTables, waiterTableIds, orders, previousNeedsHelpB
 
       const tableOrders = orders
         .filter((order) => order.tableId === tableId || String(order.table) === String(tableNumber))
-        .filter((order) => order.status !== 'served');
+        .filter((order) => order.status !== 'served')
+        .filter((order) => waiterId && getOrderWaiterId(order) === waiterId);
 
       const activeOrder = tableOrders[0];
       const needsHelp = Boolean(previousNeedsHelpById[tableId]);
@@ -220,14 +235,37 @@ const WaiterOrdersPage = () => {
 
   const belongsToCurrentWaiter = useCallback(
     (order) => {
-      if (!waiterId) return true;
-
-      const assignedWaiterId = toId(order?.waiter);
-      if (!assignedWaiterId) return true;
-
-      return assignedWaiterId === waiterId;
+      if (!waiterId) return false;
+      return getOrderWaiterId(order) === waiterId;
     },
     [waiterId]
+  );
+
+  const isClaimableByCurrentWaiter = useCallback(
+    (order) => {
+      if (!waiterId) return false;
+      return !getOrderWaiterId(order);
+    },
+    [waiterId]
+  );
+
+  const isVisibleToCurrentWaiter = useCallback(
+    (order) => belongsToCurrentWaiter(order) || isClaimableByCurrentWaiter(order),
+    [belongsToCurrentWaiter, isClaimableByCurrentWaiter]
+  );
+
+  const syncWaiterTableIdsFromOrders = useCallback(
+    (nextOrders) => {
+      const nextTableIds = new Set(
+        nextOrders
+          .filter((order) => belongsToCurrentWaiter(order))
+          .map((order) => getOrderTableId(order))
+          .filter(Boolean)
+      );
+
+      waiterTableIdsRef.current = nextTableIds;
+    },
+    [belongsToCurrentWaiter]
   );
 
   const syncTablesFromOrders = useCallback((nextOrders) => {
@@ -240,7 +278,8 @@ const WaiterOrdersPage = () => {
         cachedTablesRef.current,
         waiterTableIdsRef.current,
         nextOrders,
-        previousNeedsHelpById
+        previousNeedsHelpById,
+        waiterId
       );
 
       previousNeedsHelpRef.current = Object.fromEntries(
@@ -249,7 +288,7 @@ const WaiterOrdersPage = () => {
 
       return nextTables;
     });
-  }, []);
+  }, [waiterId]);
 
   const unreadCount = useMemo(
     () => notifications.filter((notification) => !notification.read).length,
@@ -316,15 +355,16 @@ const WaiterOrdersPage = () => {
           ? tablesResponse.data.tables
           : [];
 
-        const waiterOrders = apiOrders.filter((order) => belongsToCurrentWaiter(order));
+        const waiterVisibleOrders = apiOrders.filter((order) => isVisibleToCurrentWaiter(order));
+        const waiterOwnedOrders = apiOrders.filter((order) => belongsToCurrentWaiter(order));
 
-        const activeOrders = waiterOrders
+        const activeOrders = waiterVisibleOrders
           .filter((order) => ACTIVE_API_STATUSES.has(order?.status))
           .map((order) => normalizeOrder(order, t));
 
         const assignedTableIds = new Set(
-          waiterOrders
-            .map((order) => toId(order?.table))
+          waiterOwnedOrders
+            .map((order) => getOrderTableId(order))
             .filter(Boolean)
         );
 
@@ -352,7 +392,15 @@ const WaiterOrdersPage = () => {
     return () => {
       isActive = false;
     };
-  }, [belongsToCurrentWaiter, ordersEndpoint, restaurantId, syncTablesFromOrders, t, tablesEndpoint]);
+  }, [
+    belongsToCurrentWaiter,
+    isVisibleToCurrentWaiter,
+    ordersEndpoint,
+    restaurantId,
+    syncTablesFromOrders,
+    t,
+    tablesEndpoint,
+  ]);
 
   useEffect(() => {
     if (!restaurantId) {
@@ -371,18 +419,15 @@ const WaiterOrdersPage = () => {
       const orderId = toId(order?._id);
 
       if (!orderId) return;
-      if (!belongsToCurrentWaiter(order)) return;
 
       const tableNumber = order.table?.number || order.table || '-';
       const normalizedOrder = normalizeOrder(order, t);
       const nextRawStatus = String(order?.status || '');
       const previousRawStatus = orderStatusByIdRef.current.get(orderId);
 
-      if (normalizedOrder.tableId) {
-        waiterTableIdsRef.current.add(normalizedOrder.tableId);
-      }
+      const isVisibleToWaiter = isVisibleToCurrentWaiter(order);
 
-      if (nextRawStatus === 'ready' && previousRawStatus !== 'ready') {
+      if (isVisibleToWaiter && nextRawStatus === 'ready' && previousRawStatus !== 'ready') {
         const newNotif = {
           id: Date.now(),
           type: 'ready',
@@ -402,7 +447,7 @@ const WaiterOrdersPage = () => {
 
       }
 
-      if (nextRawStatus === 'preparing' && previousRawStatus !== 'preparing') {
+      if (isVisibleToWaiter && nextRawStatus === 'preparing' && previousRawStatus !== 'preparing') {
         const newNotif = {
           id: Date.now(),
           type: 'new',
@@ -414,14 +459,14 @@ const WaiterOrdersPage = () => {
         setNotifications((previousNotifications) => [newNotif, ...previousNotifications]);
       }
 
-      if (nextRawStatus === 'served' || nextRawStatus === 'cancelled') {
+      if (!isVisibleToWaiter || nextRawStatus === 'served' || nextRawStatus === 'cancelled') {
         orderStatusByIdRef.current.delete(orderId);
       } else {
         orderStatusByIdRef.current.set(orderId, nextRawStatus);
       }
 
       setOrders((previousOrders) => {
-        const shouldRemove = nextRawStatus === 'served' || nextRawStatus === 'cancelled';
+        const shouldRemove = !isVisibleToWaiter || nextRawStatus === 'served' || nextRawStatus === 'cancelled';
         let nextOrders = [];
 
         if (shouldRemove) {
@@ -446,6 +491,7 @@ const WaiterOrdersPage = () => {
             : [incomingOrder, ...previousOrders];
         }
 
+        syncWaiterTableIdsFromOrders(nextOrders);
         syncTablesFromOrders(nextOrders);
         return nextOrders;
       });
@@ -454,14 +500,10 @@ const WaiterOrdersPage = () => {
     const handleNewOrder = (data) => {
       const order = data?.order;
       if (!order?._id) return;
-      if (!belongsToCurrentWaiter(order)) return;
+      if (!isVisibleToCurrentWaiter(order)) return;
 
       const tableNumber = order.table?.number || order.table || '-';
       const normalizedOrder = normalizeOrder(order, t);
-
-      if (normalizedOrder.tableId) {
-        waiterTableIdsRef.current.add(normalizedOrder.tableId);
-      }
 
       orderStatusByIdRef.current.set(normalizedOrder.id, String(order?.status || 'pending'));
 
@@ -480,6 +522,7 @@ const WaiterOrdersPage = () => {
           ...previousOrders.filter((existingOrder) => existingOrder.id !== normalizedOrder.id),
         ];
 
+        syncWaiterTableIdsFromOrders(nextOrders);
         syncTablesFromOrders(nextOrders);
         return nextOrders;
       });
@@ -500,15 +543,33 @@ const WaiterOrdersPage = () => {
       socketRef.current?.disconnect();
       socketRef.current = null;
     };
-  }, [belongsToCurrentWaiter, restaurantId, syncTablesFromOrders, t, user?.restaurant]);
+  }, [
+    belongsToCurrentWaiter,
+    isVisibleToCurrentWaiter,
+    restaurantId,
+    syncTablesFromOrders,
+    syncWaiterTableIdsFromOrders,
+    t,
+    user?.restaurant,
+  ]);
 
   const filteredOrders = useMemo(() => {
     const baseOrders = orderFilter === 'all'
       ? orders
       : orders.filter((order) => order.status === orderFilter);
 
-    // Keep served orders at the bottom.
+    // Keep waiter-owned orders first, and served orders at the bottom.
     return [...baseOrders].sort((a, b) => {
+      const aOwnedByCurrentWaiter = belongsToCurrentWaiter(a);
+      const bOwnedByCurrentWaiter = belongsToCurrentWaiter(b);
+
+      if (aOwnedByCurrentWaiter && !bOwnedByCurrentWaiter) {
+        return -1;
+      }
+      if (!aOwnedByCurrentWaiter && bOwnedByCurrentWaiter) {
+        return 1;
+      }
+
       if (a.status === 'served' && b.status !== 'served') {
         return 1;
       }
@@ -517,7 +578,7 @@ const WaiterOrdersPage = () => {
       }
       return 0;
     });
-  }, [orders, orderFilter]);
+  }, [belongsToCurrentWaiter, orders, orderFilter]);
 
   const handleLogout = () => {
     logout();
@@ -564,10 +625,12 @@ const WaiterOrdersPage = () => {
             ? {
                 ...order,
                 status: newStatus,
+                waiterId: order.waiterId || waiterId,
               }
             : order
         );
 
+        syncWaiterTableIdsFromOrders(nextOrders);
         syncTablesFromOrders(nextOrders);
         return nextOrders;
       });
