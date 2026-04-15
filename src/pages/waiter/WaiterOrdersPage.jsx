@@ -181,6 +181,7 @@ const WaiterOrdersPage = () => {
   const cachedTablesRef = useRef([]);
   const waiterTableIdsRef = useRef(new Set());
   const previousNeedsHelpRef = useRef({});
+  const orderStatusByIdRef = useRef(new Map());
   const socketRef = useRef(null);
 
   const statusLabels = useMemo(
@@ -220,7 +221,11 @@ const WaiterOrdersPage = () => {
   const belongsToCurrentWaiter = useCallback(
     (order) => {
       if (!waiterId) return true;
-      return toId(order?.waiter) === waiterId;
+
+      const assignedWaiterId = toId(order?.waiter);
+      if (!assignedWaiterId) return true;
+
+      return assignedWaiterId === waiterId;
     },
     [waiterId]
   );
@@ -325,6 +330,9 @@ const WaiterOrdersPage = () => {
 
         cachedTablesRef.current = apiTables;
         waiterTableIdsRef.current = assignedTableIds;
+        orderStatusByIdRef.current = new Map(
+          activeOrders.map((order) => [order.id, String(order.rawStatus || '')])
+        );
 
         setOrders(activeOrders);
         syncTablesFromOrders(activeOrders);
@@ -360,20 +368,28 @@ const WaiterOrdersPage = () => {
 
     const handleOrderStatusUpdated = (data) => {
       const order = data?.order;
-      if (!order?._id) return;
+      const orderId = toId(order?._id);
+
+      if (!orderId) return;
       if (!belongsToCurrentWaiter(order)) return;
 
       const tableNumber = order.table?.number || order.table || '-';
       const normalizedOrder = normalizeOrder(order, t);
+      const nextRawStatus = String(order?.status || '');
+      const previousRawStatus = orderStatusByIdRef.current.get(orderId);
 
-      if (order.status === 'ready') {
+      if (normalizedOrder.tableId) {
+        waiterTableIdsRef.current.add(normalizedOrder.tableId);
+      }
+
+      if (nextRawStatus === 'ready' && previousRawStatus !== 'ready') {
         const newNotif = {
           id: Date.now(),
           type: 'ready',
-          message: `Order ${getOrderDisplayNumber(order.orderNumber, order._id, t)} - Table ${tableNumber} is Ready to Serve!`,
+          message: `Order ${getOrderDisplayNumber(order.orderNumber, orderId, t)} - Table ${tableNumber} is Ready to Serve!`,
           time: 'Just now',
           read: false,
-          orderId: order._id,
+          orderId,
           tableNumber,
         };
 
@@ -384,48 +400,55 @@ const WaiterOrdersPage = () => {
           icon: '🔔',
         });
 
-        setOrders((previousOrders) => {
-          const nextOrders = previousOrders.some(
-            (existingOrder) => existingOrder.id === normalizedOrder.id || existingOrder._id === order._id
-          )
-            ? previousOrders.map((existingOrder) => (
-                existingOrder.id === normalizedOrder.id || existingOrder._id === order._id
-                  ? { ...existingOrder, ...normalizedOrder, status: 'ready', rawStatus: 'ready' }
-                  : existingOrder
-              ))
-            : [{ ...normalizedOrder, status: 'ready', rawStatus: 'ready' }, ...previousOrders];
-
-          syncTablesFromOrders(nextOrders);
-          return nextOrders;
-        });
       }
 
-      if (order.status === 'preparing') {
+      if (nextRawStatus === 'preparing' && previousRawStatus !== 'preparing') {
         const newNotif = {
           id: Date.now(),
           type: 'new',
-          message: `Order ${getOrderDisplayNumber(order.orderNumber, order._id, t)} - Table ${tableNumber} is being prepared`,
+          message: `Order ${getOrderDisplayNumber(order.orderNumber, orderId, t)} - Table ${tableNumber} is being prepared`,
           time: 'Just now',
           read: false,
         };
 
         setNotifications((previousNotifications) => [newNotif, ...previousNotifications]);
+      }
 
-        setOrders((previousOrders) => {
-          const nextOrders = previousOrders.some(
-            (existingOrder) => existingOrder.id === normalizedOrder.id || existingOrder._id === order._id
+      if (nextRawStatus === 'served' || nextRawStatus === 'cancelled') {
+        orderStatusByIdRef.current.delete(orderId);
+      } else {
+        orderStatusByIdRef.current.set(orderId, nextRawStatus);
+      }
+
+      setOrders((previousOrders) => {
+        const shouldRemove = nextRawStatus === 'served' || nextRawStatus === 'cancelled';
+        let nextOrders = [];
+
+        if (shouldRemove) {
+          nextOrders = previousOrders.filter(
+            (existingOrder) => existingOrder.id !== normalizedOrder.id && existingOrder.id !== orderId
+          );
+        } else {
+          const incomingOrder = {
+            ...normalizedOrder,
+            status: toUiOrderStatus(nextRawStatus),
+            rawStatus: nextRawStatus,
+          };
+
+          nextOrders = previousOrders.some(
+            (existingOrder) => existingOrder.id === normalizedOrder.id || existingOrder.id === orderId
           )
             ? previousOrders.map((existingOrder) => (
-                existingOrder.id === normalizedOrder.id || existingOrder._id === order._id
-                  ? { ...existingOrder, ...normalizedOrder, status: 'in_progress', rawStatus: 'preparing' }
+                existingOrder.id === normalizedOrder.id || existingOrder.id === orderId
+                  ? { ...existingOrder, ...incomingOrder }
                   : existingOrder
               ))
-            : [{ ...normalizedOrder, status: 'in_progress', rawStatus: 'preparing' }, ...previousOrders];
+            : [incomingOrder, ...previousOrders];
+        }
 
-          syncTablesFromOrders(nextOrders);
-          return nextOrders;
-        });
-      }
+        syncTablesFromOrders(nextOrders);
+        return nextOrders;
+      });
     };
 
     const handleNewOrder = (data) => {
@@ -439,6 +462,8 @@ const WaiterOrdersPage = () => {
       if (normalizedOrder.tableId) {
         waiterTableIdsRef.current.add(normalizedOrder.tableId);
       }
+
+      orderStatusByIdRef.current.set(normalizedOrder.id, String(order?.status || 'pending'));
 
       const newNotif = {
         id: Date.now(),
@@ -461,11 +486,17 @@ const WaiterOrdersPage = () => {
     };
 
     socketRef.current.on('orderStatusUpdated', handleOrderStatusUpdated);
+    socketRef.current.on('order_updated', handleOrderStatusUpdated);
+    socketRef.current.on('order_ready', handleOrderStatusUpdated);
     socketRef.current.on('newOrder', handleNewOrder);
+    socketRef.current.on('new_order', handleNewOrder);
 
     return () => {
       socketRef.current?.off('orderStatusUpdated', handleOrderStatusUpdated);
+      socketRef.current?.off('order_updated', handleOrderStatusUpdated);
+      socketRef.current?.off('order_ready', handleOrderStatusUpdated);
       socketRef.current?.off('newOrder', handleNewOrder);
+      socketRef.current?.off('new_order', handleNewOrder);
       socketRef.current?.disconnect();
       socketRef.current = null;
     };

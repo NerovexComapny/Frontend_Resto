@@ -15,6 +15,7 @@ import Store from 'lucide-react/dist/esm/icons/store';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { publicApi } from '../../services/api';
+import { connectSocket } from '../../services/socket';
 import { toast } from 'react-hot-toast';
 import backgroundImg from '../../assets/background.png';
 import logo from '../../assets/logo.webp';
@@ -319,6 +320,53 @@ const MenuPage = () => {
       clearInterval(intervalId);
     };
   }, [orderPlaced, trackedOrderId, ordersEndpoint, trackedOrderDetails]);
+
+  useEffect(() => {
+    if ((!orderPlaced && !trackedOrderId) || !tableId) {
+      return undefined;
+    }
+
+    const socket = connectSocket();
+    socket.emit('joinTable', tableId);
+
+    if (restaurantId) {
+      socket.emit('joinRestaurant', restaurantId);
+    }
+
+    const handleRealtimeOrderUpdate = (data) => {
+      const order = data?.order;
+      const incomingOrderId = toId(order?._id || order?.id);
+      const incomingTableId = toId(order?.table);
+
+      if (!incomingOrderId) return;
+
+      const isTrackedOrder = trackedOrderId && incomingOrderId === trackedOrderId;
+      const isSameTableFallback = !trackedOrderId && incomingTableId && incomingTableId === tableId;
+
+      if (!isTrackedOrder && !isSameTableFallback) return;
+
+      const nextStatus = toClientOrderStatus(order?.status);
+      const details = Array.isArray(order?.items)
+        ? order.items
+            .map((item) => `${Number(item?.quantity || 1)}x ${item?.name || item?.menuItem?.name?.fr || 'Item'}`)
+            .join(', ')
+        : trackedOrderDetails;
+
+      setTrackedOrderId(incomingOrderId);
+      setTrackedOrderStatus(nextStatus);
+      setTrackedOrderDetails(details || '');
+    };
+
+    socket.on('orderStatusUpdated', handleRealtimeOrderUpdate);
+    socket.on('order_updated', handleRealtimeOrderUpdate);
+    socket.on('order_ready', handleRealtimeOrderUpdate);
+
+    return () => {
+      socket.off('orderStatusUpdated', handleRealtimeOrderUpdate);
+      socket.off('order_updated', handleRealtimeOrderUpdate);
+      socket.off('order_ready', handleRealtimeOrderUpdate);
+    };
+  }, [orderPlaced, restaurantId, tableId, trackedOrderDetails, trackedOrderId]);
 
   useEffect(() => {
     if (!orderPlaced) {
