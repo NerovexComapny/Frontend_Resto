@@ -19,7 +19,6 @@ import { connectSocket } from '../../services/socket';
 import { toast } from 'react-hot-toast';
 import backgroundImg from '../../assets/background.png';
 import logo from '../../assets/logo.webp';
-import LanguageSwitcher from '../../components/shared/LanguageSwitcher';
 
 const DEFAULT_MENU_CATEGORY_ID = 'all';
 
@@ -255,10 +254,6 @@ const MenuPage = () => {
     }
   };
 
-  const scrollToMenuGrid = () => {
-    menuGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
   const handleAdd = (item) => {
     if (!item.isAvailable) {
       return;
@@ -482,10 +477,6 @@ const MenuPage = () => {
       >
         <div className="absolute inset-0 bg-white/60" />
 
-        <div className="absolute top-4 right-4 z-20">
-          <LanguageSwitcher compact dense />
-        </div>
-
         <Motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -574,10 +565,6 @@ const MenuPage = () => {
                 <Store className="w-3.5 h-3.5 text-[#e8c56a]" />
                 <span className="max-w-[88px] truncate">{isResolvingTable ? t('clientMenu.resolvingTable') : t('clientMenu.tableLabel', { number: tableNumber })}</span>
               </div>
-            </div>
-
-            <div className="flex items-center justify-end">
-              <LanguageSwitcher compact dense />
             </div>
           </div>
         </header>
@@ -734,7 +721,7 @@ const MenuPage = () => {
       </AnimatePresence>
 
       <nav className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-[max(env(safe-area-inset-bottom),8px)]">
-        <div className="mx-auto w-full max-w-[480px] bg-white/95 border border-[#c9963a]/25 rounded-t-2xl shadow-lg grid grid-cols-3 overflow-hidden">
+        <div className="mx-auto w-full max-w-[480px] bg-white/95 border border-[#c9963a]/25 rounded-t-2xl shadow-lg grid grid-cols-2 overflow-hidden">
           <button
             onClick={scrollToTop}
             className="min-h-12 px-2 py-2 flex flex-col items-center justify-center gap-1 text-[#0a1628] active:bg-[#0a1628]/5 transition-colors"
@@ -744,16 +731,8 @@ const MenuPage = () => {
           </button>
 
           <button
-            onClick={scrollToMenuGrid}
-            className="min-h-12 px-2 py-2 flex flex-col items-center justify-center gap-1 text-[#0a1628] active:bg-[#0a1628]/5 transition-colors border-x border-[#c9963a]/15"
-          >
-            <Utensils className="w-4 h-4" />
-            <span className="text-[11px] font-bold uppercase tracking-wide">{t('common.orders')}</span>
-          </button>
-
-          <button
             onClick={() => setIsCartOpen(true)}
-            className="relative min-h-12 px-2 py-2 flex flex-col items-center justify-center gap-1 text-[#0a1628] active:bg-[#0a1628]/5 transition-colors"
+            className="relative min-h-12 px-2 py-2 flex flex-col items-center justify-center gap-1 text-[#0a1628] active:bg-[#0a1628]/5 transition-colors border-l border-[#c9963a]/15"
           >
             <ShoppingCart className="w-4 h-4" />
             <span className="text-[11px] font-bold uppercase tracking-wide">{t('clientMenu.cart')}</span>
