@@ -7,6 +7,8 @@ import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
 import Receipt from 'lucide-react/dist/esm/icons/receipt';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import Calculator from 'lucide-react/dist/esm/icons/calculator';
+import Printer from 'lucide-react/dist/esm/icons/printer';
+import Download from 'lucide-react/dist/esm/icons/download';
 import { loadStripe } from '@stripe/stripe-js';
 import api from '../../services/api';
 import { connectSocket } from '../../services/socket';
@@ -89,6 +91,8 @@ const CashierPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successOrderNumber, setSuccessOrderNumber] = useState('');
+  const [lastReceiptOrder, setLastReceiptOrder] = useState(null);
+  const [receiptNotice, setReceiptNotice] = useState('');
   const user = useAuthStore((state) => state.user);
   const ordersEndpoint = useMemo(() => getOrdersEndpoint(), []);
   const paymentsEndpoint = useMemo(() => getPaymentsEndpoint(), []);
@@ -210,14 +214,52 @@ const CashierPage = () => {
     String(o.table.number).includes(searchQuery)
   );
 
+  const fetchReceiptPdfBlob = async (orderId) => {
+    const response = await api.get(`${paymentsEndpoint}/order/${orderId}/receipt/pdf`, {
+      responseType: 'blob',
+      suppressGlobalErrorToast: true,
+    });
+
+    return response.data;
+  };
+
+  const buildReceiptFileName = (order) => {
+    const reference = String(order?.orderNumber || order?._id || 'receipt').replace(/[^a-z0-9-_]/gi, '_');
+    return `facture-${reference}.pdf`;
+  };
+
+  const downloadReceiptPdfForOrder = async (order) => {
+    if (!order?._id) return;
+
+    const blob = await fetchReceiptPdfBlob(order._id);
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = buildReceiptFileName(order);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+  };
+
+  const openReceiptPrintPreview = async (order) => {
+    if (!order?._id) return;
+
+    const blob = await fetchReceiptPdfBlob(order._id);
+    const blobUrl = URL.createObjectURL(blob);
+    window.open(blobUrl, '_blank', 'noopener,noreferrer');
+    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+  };
+
   const handleConfirmPayment = async () => {
     if (!selectedOrder) return;
     setIsProcessing(true);
+    const paidOrder = selectedOrder;
 
     try {
       if (paymentMethod === 'cash') {
         const cashInitResponse = await api.post(`${paymentsEndpoint}/cash`, {
-          orderId: selectedOrder._id,
+          orderId: paidOrder._id,
         });
         const paymentId = cashInitResponse?.data?.payment?._id;
 
@@ -230,7 +272,7 @@ const CashierPage = () => {
         });
       } else {
         const cardInitResponse = await api.post(`${paymentsEndpoint}/card`, {
-          orderId: selectedOrder._id,
+          orderId: paidOrder._id,
         });
 
         const clientSecret = cardInitResponse?.data?.clientSecret;
@@ -266,21 +308,30 @@ const CashierPage = () => {
       }
 
       setIsProcessing(false);
-      setSuccessOrderNumber(selectedOrder.orderNumber);
+      setSuccessOrderNumber(paidOrder.orderNumber);
       setShowSuccess(true);
+      setLastReceiptOrder(paidOrder);
+
+      try {
+        await downloadReceiptPdfForOrder(paidOrder);
+        setReceiptNotice('Facture exportee automatiquement en PDF.');
+      } catch {
+        setReceiptNotice('Paiement confirme. Export facture indisponible pour le moment.');
+      }
 
       // Cleanup after success
       setTimeout(() => {
-        setOrders(prev => prev.filter(o => o._id !== selectedOrder._id));
+        setOrders(prev => prev.filter(o => o._id !== paidOrder._id));
         setSelectedOrder(null);
         setShowSuccess(false);
         setSuccessOrderNumber('');
         setPaymentMethod('cash');
-      }, 2000);
+      }, 3500);
     } catch {
       setIsProcessing(false);
       setShowSuccess(false);
       setSuccessOrderNumber('');
+      setReceiptNotice('');
     }
   };
 
@@ -409,6 +460,26 @@ const CashierPage = () => {
                 </Motion.div>
                 <h2 className="text-4xl font-extrabold tracking-wide mb-2">Payment Successful</h2>
                 <p className="text-emerald-100 text-xl font-mono opacity-90">{successOrderNumber || selectedOrder?.orderNumber}</p>
+                <p className="mt-3 text-emerald-50 text-sm font-medium">{receiptNotice}</p>
+
+                {lastReceiptOrder && (
+                  <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                    <button
+                      onClick={() => openReceiptPrintPreview(lastReceiptOrder)}
+                      className="px-4 py-2 rounded-lg bg-white/15 hover:bg-white/25 border border-white/40 text-white text-sm font-bold tracking-wide flex items-center gap-2"
+                    >
+                      <Printer className="w-4 h-4" />
+                      Print Receipt
+                    </button>
+                    <button
+                      onClick={() => downloadReceiptPdfForOrder(lastReceiptOrder)}
+                      className="px-4 py-2 rounded-lg bg-white text-emerald-600 hover:bg-emerald-50 border border-white text-sm font-bold tracking-wide flex items-center gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      Export PDF
+                    </button>
+                  </div>
+                )}
               </Motion.div>
             )}
           </AnimatePresence>
