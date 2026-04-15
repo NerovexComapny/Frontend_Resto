@@ -168,6 +168,8 @@ const MenuPage = () => {
   const [menuItems, setMenuItems] = useState([]);
   const [menuLoading, setMenuLoading] = useState(true);
   const lastStatusRef = useRef('');
+  const filterBarRef = useRef(null);
+  const menuGridRef = useRef(null);
   const orderSteps = useMemo(
     () => [
       { id: 'received', label: t('clientMenu.received'), icon: Clock },
@@ -246,6 +248,16 @@ const MenuPage = () => {
 
   const cartTotal = cart.reduce((sum, current) => sum + (current.item.price * current.quantity), 0);
   const cartCount = cart.reduce((sum, current) => sum + current.quantity, 0);
+
+  const scrollToTop = () => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const scrollToMenuGrid = () => {
+    menuGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const handleAdd = (item) => {
     if (!item.isAvailable) {
@@ -466,13 +478,12 @@ const MenuPage = () => {
           backgroundImage: `url(${backgroundImg})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          backgroundAttachment: 'fixed',
         }}
       >
         <div className="absolute inset-0 bg-white/60" />
 
         <div className="absolute top-4 right-4 z-20">
-          <LanguageSwitcher />
+          <LanguageSwitcher compact dense />
         </div>
 
         <Motion.div
@@ -538,75 +549,81 @@ const MenuPage = () => {
 
   return (
     <div
-      className="relative min-h-screen pb-28 text-[#0a1628]"
+      className="relative min-h-screen overflow-x-hidden pb-40 text-[#0a1628]"
       style={{
         backgroundImage: `url(${backgroundImg})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
       }}
     >
       <div className="absolute inset-0 bg-white/60" />
 
-      <div className="relative z-10">
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-[#c9963a]/20 shadow-sm">
-          <div className="px-4 py-4 flex items-center justify-between w-full md:max-w-2xl md:mx-auto">
-            <div className="flex items-center gap-3 min-w-0">
-              <img src={logo} alt="ليالي قرطاج" className="w-10 h-10 object-contain" />
-              <div className="min-w-0">
-                <h1 dir="rtl" className="font-bold text-[#c9963a] text-lg leading-tight">ليالي قرطاج</h1>
-                <p className="text-xs text-[#0a1628]/70 truncate">{restaurantName}</p>
+      <div className="relative z-10 mx-auto w-full max-w-[480px]">
+        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-[#c9963a]/20 shadow-sm">
+          <div className="px-3 py-2.5 space-y-2">
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <img src={logo} alt="ليالي قرطاج" className="w-9 h-9 object-contain shrink-0" />
+                <div className="min-w-0">
+                  <h1 dir="rtl" className="font-bold text-[#c9963a] text-[18px] leading-tight truncate">ليالي قرطاج</h1>
+                  <p className="text-[11px] text-[#0a1628]/70 truncate">{restaurantName}</p>
+                </div>
+              </div>
+
+              <div className="shrink-0 bg-[#0a1628] text-white px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-sm inline-flex items-center gap-1.5 min-h-10 active:scale-[0.98] transition-transform">
+                <Store className="w-3.5 h-3.5 text-[#e8c56a]" />
+                <span className="max-w-[88px] truncate">{isResolvingTable ? t('clientMenu.resolvingTable') : t('clientMenu.tableLabel', { number: tableNumber })}</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <LanguageSwitcher compact />
-              <div className="bg-[#0a1628] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm inline-flex items-center gap-2">
-                <Store className="w-4 h-4 text-[#e8c56a]" />
-                <span>{isResolvingTable ? t('clientMenu.resolvingTable') : t('clientMenu.tableLabel', { number: tableNumber })}</span>
-              </div>
+            <div className="flex items-center justify-end">
+              <LanguageSwitcher compact dense />
             </div>
           </div>
         </header>
 
-        <div className="px-4 py-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#0a1628]/50" />
-            <input
-              type="text"
-              placeholder={t('clientMenu.searchDish')}
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/85 border border-[#c9963a]/20 text-[#0a1628] placeholder:text-[#0a1628]/50 outline-none focus:border-[#c9963a] focus:ring-2 focus:ring-[#c9963a]/25"
-            />
+        <div ref={filterBarRef} className="sticky top-[88px] z-30 bg-white/85 backdrop-blur-sm border-b border-[#c9963a]/20">
+          <div className="px-3 pt-3 pb-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#0a1628]/50" />
+              <input
+                type="text"
+                placeholder={t('clientMenu.searchDish')}
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="w-full h-11 pl-11 pr-4 rounded-2xl bg-white border border-[#c9963a]/20 text-[#0a1628] placeholder:text-[#0a1628]/50 outline-none focus:border-[#c9963a] focus:ring-2 focus:ring-[#c9963a]/25"
+              />
+            </div>
+          </div>
+
+          <div className="px-3 pb-3">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar whitespace-nowrap">
+              {menuCategories.map((category) => {
+                const isActive = activeCategory === category.id;
+                return (
+                  <button
+                    key={category.id}
+                    onClick={() => setActiveCategory(category.id)}
+                    className={`shrink-0 min-h-10 px-4 py-2 rounded-xl border transition-all text-left active:scale-[0.98] ${
+                      isActive
+                        ? 'bg-[#c9963a] text-white border-[#c9963a] shadow-sm'
+                        : 'bg-white text-[#0a1628] border-[#c9963a]/30'
+                    }`}
+                  >
+                    <p className="text-sm font-bold leading-tight">{category.name}</p>
+                    <p dir="rtl" className={`text-[11px] text-right leading-tight mt-0.5 ${isActive ? 'text-white/90' : 'text-[#0a1628]/70'}`}>
+                      {category.nameAr}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        <div className="px-4 pb-2 flex flex-nowrap md:flex-wrap gap-2 overflow-x-auto md:overflow-visible no-scrollbar">
-          {menuCategories.map((category) => {
-            const isActive = activeCategory === category.id;
-            return (
-              <button
-                key={category.id}
-                onClick={() => setActiveCategory(category.id)}
-                className={`shrink-0 px-4 py-2 rounded-xl border transition-all text-left ${
-                  isActive
-                    ? 'bg-[#c9963a] text-white border-[#c9963a]'
-                    : 'bg-white/80 text-[#0a1628] border-[#c9963a]/30'
-                }`}
-              >
-                <p className="text-sm font-bold leading-tight">{category.name}</p>
-                <p dir="rtl" className={`text-[11px] leading-tight mt-0.5 ${isActive ? 'text-white/90' : 'text-[#0a1628]/70'}`}>
-                  {category.nameAr}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="px-4 mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+        <div ref={menuGridRef} className="px-3 pt-3 grid grid-cols-1 min-[390px]:grid-cols-2 gap-3">
           {menuLoading && (
-            <div className="col-span-full bg-white/80 border border-[#c9963a]/20 rounded-2xl p-8 text-center text-[#0a1628]/70">
+            <div className="col-span-full bg-white/90 border border-[#c9963a]/20 rounded-2xl p-7 text-center text-[#0a1628]/70">
               <div className="mx-auto h-7 w-7 rounded-full border-2 border-[#c9963a]/30 border-t-[#c9963a] animate-spin" />
               <p className="text-sm mt-3 font-semibold">{t('clientMenu.loadingMenu')}</p>
             </div>
@@ -622,11 +639,11 @@ const MenuPage = () => {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.03 }}
-                className={`bg-white/80 backdrop-blur rounded-2xl shadow-sm border border-[#c9963a]/20 overflow-hidden flex flex-col ${item.isAvailable ? '' : 'grayscale opacity-60'}`}
+                className={`bg-white/90 rounded-2xl shadow-sm border border-[#c9963a]/20 overflow-hidden flex flex-col min-h-[280px] ${item.isAvailable ? '' : 'grayscale opacity-60'}`}
               >
-                <div className="h-24 sm:h-32 md:h-40 relative">
+                <div className="h-[136px] min-[420px]:h-[150px] relative">
                   {itemImage ? (
-                    <img src={itemImage} alt={item.name} className="w-full h-full object-cover" />
+                    <img src={itemImage} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-[#0a1628] to-[#0891b2] flex items-center justify-center">
                       <span className="text-3xl font-black text-[#c9963a] uppercase">{item.name.charAt(0)}</span>
@@ -634,36 +651,36 @@ const MenuPage = () => {
                   )}
                 </div>
 
-                <div className="p-3 flex flex-col flex-1">
-                  <h3 className="font-bold text-[#0a1628] text-sm md:text-base line-clamp-1">{item.name}</h3>
-                  <p dir="rtl" className="text-[11px] text-[#0a1628]/60 mt-1 line-clamp-1">{item.nameAr}</p>
+                <div className="p-3.5 flex flex-col flex-1">
+                  <h3 className="font-bold text-[#0a1628] text-[17px] leading-tight line-clamp-2 min-h-[2.6rem]">{item.name}</h3>
+                  <p dir="rtl" className="text-[12px] text-right text-[#0a1628]/60 mt-1 line-clamp-1 min-h-[1.1rem]">{item.nameAr}</p>
 
-                  <div className="mt-3 flex items-center justify-between gap-2">
-                    <span className="font-bold text-[#c9963a] text-xs md:text-sm">{item.price.toFixed(3)} TND</span>
+                  <div className="mt-auto pt-3 flex items-end justify-between gap-2">
+                    <span className="font-extrabold text-[#c9963a] text-[18px] leading-none">{item.price.toFixed(3)} TND</span>
 
                     {item.isAvailable ? (
                       quantity > 0 ? (
-                        <div className="flex items-center gap-2 bg-white/90 border border-[#c9963a]/20 rounded-lg p-1">
+                        <div className="ml-auto inline-flex items-center gap-1.5 bg-white border border-[#c9963a]/25 rounded-xl p-1">
                           <button
                             onClick={() => handleRemove(item._id)}
-                            className="w-6 h-6 rounded-md bg-[#1e3a5f] text-white flex items-center justify-center"
+                            className="w-10 h-10 rounded-lg bg-[#1e3a5f] text-white flex items-center justify-center active:scale-[0.96] transition-transform"
                           >
-                            <Minus className="w-3 h-3" />
+                            <Minus className="w-4 h-4" />
                           </button>
-                          <span className="text-sm font-bold min-w-[1ch] text-center text-[#0a1628]">{quantity}</span>
+                          <span className="text-sm font-bold min-w-[1.2ch] text-center text-[#0a1628]">{quantity}</span>
                           <button
                             onClick={() => handleAdd(item)}
-                            className="w-6 h-6 rounded-md bg-[#c9963a] text-white flex items-center justify-center"
+                            className="w-10 h-10 rounded-lg bg-[#c9963a] text-white flex items-center justify-center active:scale-[0.96] transition-transform"
                           >
-                            <Plus className="w-3 h-3" />
+                            <Plus className="w-4 h-4" />
                           </button>
                         </div>
                       ) : (
                         <button
                           onClick={() => handleAdd(item)}
-                          className="w-8 h-8 rounded-lg bg-[#c9963a] text-white flex items-center justify-center"
+                          className="ml-auto w-11 h-11 rounded-xl bg-[#c9963a] text-white flex items-center justify-center active:scale-[0.96] transition-transform"
                         >
-                          <Plus className="w-4 h-4" />
+                          <Plus className="w-5 h-5" />
                         </button>
                       )
                     ) : (
@@ -676,8 +693,8 @@ const MenuPage = () => {
           })}
 
           {!menuLoading && filteredItems.length === 0 && (
-            <div className="col-span-full bg-white/80 border border-[#c9963a]/20 rounded-2xl p-8 text-center text-[#0a1628]/70">
-              <p className="text-lg font-semibold">
+            <div className="col-span-full bg-white/90 border border-[#c9963a]/20 rounded-2xl p-7 text-center text-[#0a1628]/70">
+              <p className="text-base font-semibold">
                 {!restaurantId ? t('clientMenu.restaurantNotFound') : t('clientMenu.noItemsFound')}
               </p>
               <p className="text-sm mt-1">
@@ -696,26 +713,58 @@ const MenuPage = () => {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-4 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-64 z-40"
+            className="fixed bottom-24 right-4 z-40 flex flex-col items-center gap-2"
           >
             <button
               onClick={() => setIsCartOpen(true)}
-              className="w-full bg-[#0a1628] text-white rounded-2xl shadow-xl p-4 flex items-center justify-between"
+              className="w-14 h-14 rounded-full bg-[#0a1628] text-white shadow-xl flex items-center justify-center active:scale-[0.96] transition-transform"
             >
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <ShoppingCart className="w-6 h-6 text-[#c9963a]" />
-                  <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-[#c9963a] text-white text-[10px] font-bold flex items-center justify-center border-2 border-[#0a1628]">
-                    {cartCount}
-                  </span>
-                </div>
-                <span className="font-bold">{t('clientMenu.cart')}</span>
+              <div className="relative">
+                <ShoppingCart className="w-6 h-6 text-[#c9963a]" />
+                <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-[#c9963a] text-white text-[10px] font-bold flex items-center justify-center border-2 border-[#0a1628]">
+                  {cartCount}
+                </span>
               </div>
-              <span className="font-bold text-[#e8c56a]">{cartTotal.toFixed(3)} TND</span>
             </button>
+            <span className="px-2.5 py-1 rounded-full bg-white/95 border border-[#c9963a]/25 text-[#0a1628] text-[11px] font-bold shadow-sm">
+              {cartTotal.toFixed(3)} TND
+            </span>
           </Motion.div>
         )}
       </AnimatePresence>
+
+      <nav className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-[max(env(safe-area-inset-bottom),8px)]">
+        <div className="mx-auto w-full max-w-[480px] bg-white/95 border border-[#c9963a]/25 rounded-t-2xl shadow-lg grid grid-cols-3 overflow-hidden">
+          <button
+            onClick={scrollToTop}
+            className="min-h-12 px-2 py-2 flex flex-col items-center justify-center gap-1 text-[#0a1628] active:bg-[#0a1628]/5 transition-colors"
+          >
+            <Store className="w-4 h-4" />
+            <span className="text-[11px] font-bold uppercase tracking-wide">{t('common.home', { defaultValue: 'Home' })}</span>
+          </button>
+
+          <button
+            onClick={scrollToMenuGrid}
+            className="min-h-12 px-2 py-2 flex flex-col items-center justify-center gap-1 text-[#0a1628] active:bg-[#0a1628]/5 transition-colors border-x border-[#c9963a]/15"
+          >
+            <Utensils className="w-4 h-4" />
+            <span className="text-[11px] font-bold uppercase tracking-wide">{t('common.orders')}</span>
+          </button>
+
+          <button
+            onClick={() => setIsCartOpen(true)}
+            className="relative min-h-12 px-2 py-2 flex flex-col items-center justify-center gap-1 text-[#0a1628] active:bg-[#0a1628]/5 transition-colors"
+          >
+            <ShoppingCart className="w-4 h-4" />
+            <span className="text-[11px] font-bold uppercase tracking-wide">{t('clientMenu.cart')}</span>
+            {cartCount > 0 && (
+              <span className="absolute top-1.5 right-5 h-4 min-w-4 px-1 rounded-full bg-[#c9963a] text-white text-[9px] font-bold flex items-center justify-center">
+                {cartCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </nav>
 
       <AnimatePresence>
         {isCartOpen && (
@@ -733,7 +782,7 @@ const MenuPage = () => {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 24, stiffness: 220 }}
-              className="relative w-full md:max-w-md md:mx-auto bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+              className="relative w-full max-w-[480px] mx-auto bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
             >
               <div className="p-5 border-b border-[#0a1628]/10 flex items-center justify-between">
                 <h2 className="text-xl font-bold text-[#0a1628]">{t('clientMenu.yourOrder')}</h2>
