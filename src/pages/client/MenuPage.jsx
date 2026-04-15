@@ -483,7 +483,7 @@ const MenuPage = () => {
           transition={{ type: 'spring', damping: 18 }}
           className="relative z-10 w-full max-w-md bg-white/85 backdrop-blur rounded-3xl border border-[#c9963a]/20 shadow-xl p-8 text-center"
         >
-          <img src={logo} alt="ليالي قرطاج" className="w-20 h-20 mx-auto object-contain mb-3" />
+          <img src={logo} alt="ليالي قرطاج" className="restaurant-logo-circle w-14 h-14 mx-auto mb-3" />
           <h2 dir="rtl" className="text-3xl font-bold text-[#c9963a] font-serif mb-1">ليالي قرطاج</h2>
 
           <Motion.div
@@ -554,7 +554,7 @@ const MenuPage = () => {
           <div className="px-3 py-2.5 space-y-2">
             <div className="flex items-center justify-between gap-2 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
-                <img src={logo} alt="ليالي قرطاج" className="w-9 h-9 object-contain shrink-0" />
+                <img src={logo} alt="ليالي قرطاج" className="restaurant-logo-circle w-10 h-10 shrink-0" />
                 <div className="min-w-0">
                   <h1 dir="rtl" className="font-bold text-[#c9963a] text-[18px] leading-tight truncate">ليالي قرطاج</h1>
                   <p className="text-[11px] text-[#0a1628]/70 truncate">{restaurantName}</p>

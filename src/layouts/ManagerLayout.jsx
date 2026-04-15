@@ -76,7 +76,7 @@ const ManagerLayout = ({ children }) => {
       }`}>
         {/* Logo */}
         <div className="p-6 flex items-center gap-3">
-          <img src={logo} alt="ليالي قرطاج" className="w-12 h-12 object-contain" />
+          <img src={logo} alt="ليالي قرطاج" className="restaurant-logo-circle w-12 h-12" />
           <div>
             <h1 className="text-xl font-bold text-[#7c6af7]" 
                 style={{ fontFamily: "'Playfair Display', serif" }}
@@ -135,7 +135,7 @@ const ManagerLayout = ({ children }) => {
         {/* Mobile Header */}
         <header className="flex lg:hidden items-center justify-between p-4 bg-[#0d1f3c] border-b border-[#1e3a5f] sticky top-0 z-30">
           <div className="flex items-center gap-2">
-            <img src={logo} alt="ليالي قرطاج" className="w-8 h-8 object-contain" />
+            <img src={logo} alt="ليالي قرطاج" className="restaurant-logo-circle w-10 h-10" />
             <h1 className="text-xl font-bold text-[#7c6af7]" style={{ fontFamily: "'Playfair Display', serif" }} dir="rtl">
               ليالي قرطاج
             </h1>

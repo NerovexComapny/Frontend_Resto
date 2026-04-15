@@ -70,7 +70,7 @@ const LoginPage = () => {
         transition={{ duration: 0.7 }}
         className="bg-[#0d1f3c]/80 backdrop-blur-xl border border-[#0000003A]/30 rounded-2xl p-6 sm:p-8 md:p-10 w-full max-w-sm sm:max-w-md mx-4 shadow-2xl z-10 relative"
       >
-        <img src={logo} alt="ليالي قرطاج" className="w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 object-contain" />
+        <img src={logo} alt="ليالي قرطاج" className="restaurant-logo-circle w-14 h-14 mx-auto mb-4" />
 
         <h1 dir="rtl" className="text-2xl md:text-3xl font-bold text-[#0B95E6] text-center font-serif mb-1">
           ليالي قرطاج
