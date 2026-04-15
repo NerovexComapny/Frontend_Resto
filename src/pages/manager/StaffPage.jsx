@@ -30,6 +30,14 @@ const getRoleStyle = (role) => {
   }
 };
 
+const EMPTY_FORM_STATE = {
+  name: '',
+  phone: '',
+  email: '',
+  password: '',
+  role: 'waiter',
+};
+
 const StaffPage = () => {
   const { i18n } = useTranslation();
   const currentLanguage = String(i18n.resolvedLanguage || i18n.language || 'en').split('-')[0];
@@ -126,6 +134,8 @@ const StaffPage = () => {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
+  const [formData, setFormData] = useState(EMPTY_FORM_STATE);
+  const [isSaving, setIsSaving] = useState(false);
 
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -139,13 +149,75 @@ const StaffPage = () => {
   };
 
   const handleOpenModal = (staffMember = null) => {
+    const nextFormData = staffMember
+      ? {
+          name: staffMember?.name || '',
+          phone: staffMember?.phone || '',
+          email: staffMember?.email || '',
+          password: '',
+          role: staffMember?.role || 'waiter',
+        }
+      : EMPTY_FORM_STATE;
+
+    setFormData(nextFormData);
     setEditingStaff(staffMember);
     setIsModalOpen(true);
   };
 
-  const handleCloseModal = () => {
+  const handleCloseModal = (force = false) => {
+    if (isSaving && !force) return;
+
     setIsModalOpen(false);
-    setTimeout(() => setEditingStaff(null), 200);
+    setTimeout(() => {
+      setEditingStaff(null);
+      setFormData(EMPTY_FORM_STATE);
+    }, 200);
+  };
+
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((previous) => ({ ...previous, [name]: value }));
+  };
+
+  const handleSubmitStaff = async (event) => {
+    event.preventDefault();
+
+    if (!editingStaff?._id) {
+      handleCloseModal();
+      return;
+    }
+
+    const payload = {
+      name: String(formData.name || '').trim(),
+      phone: String(formData.phone || '').trim(),
+      email: String(formData.email || '').trim(),
+      role: String(formData.role || 'waiter').trim(),
+    };
+
+    if (!payload.name || !payload.email || !payload.role) {
+      toast.error(isArabic ? 'الرجاء تعبئة الحقول المطلوبة' : 'Please fill all required fields');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const response = await api.put(`/users/${editingStaff._id}`, payload);
+      const updatedUser = response?.data?.user || { ...editingStaff, ...payload };
+
+      setStaff((previousStaff) => previousStaff.map((person) => (
+        person._id === editingStaff._id
+          ? { ...person, ...updatedUser }
+          : person
+      )));
+
+      toast.success(isArabic ? 'تم تحديث الموظف بنجاح' : 'Staff member updated successfully');
+      handleCloseModal(true);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || (isArabic ? 'فشل تحديث الموظف' : 'Failed to update staff member'));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   useEffect(() => {
@@ -363,7 +435,7 @@ const StaffPage = () => {
                 </div>
 
                 <div className="p-4 sm:p-6 overflow-y-auto">
-                  <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); handleCloseModal(); }}>
+                  <form className="space-y-5" onSubmit={handleSubmitStaff}>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
@@ -371,8 +443,10 @@ const StaffPage = () => {
                         <div className="relative">
                           <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                           <input 
+                            name="name"
                             type="text" 
-                            defaultValue={editingStaff?.name || ''}
+                            value={formData.name}
+                            onChange={handleInputChange}
                             placeholder={text.fullNamePlaceholder}
                             className="w-full pl-12 pr-4 py-3 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-[#c9963a] focus:ring-1 focus:ring-amber-500 transition-all"
                             required
@@ -384,8 +458,10 @@ const StaffPage = () => {
                         <div className="relative">
                           <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                           <input 
+                            name="phone"
                             type="tel" 
-                            defaultValue={editingStaff?.phone || ''}
+                            value={formData.phone}
+                            onChange={handleInputChange}
                             placeholder={text.phonePlaceholder}
                             className="w-full pl-12 pr-4 py-3 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-[#c9963a] focus:ring-1 focus:ring-amber-500 transition-all"
                             required
@@ -399,8 +475,10 @@ const StaffPage = () => {
                       <div className="relative">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                         <input 
+                          name="email"
                           type="email" 
-                          defaultValue={editingStaff?.email || ''}
+                          value={formData.email}
+                          onChange={handleInputChange}
                           placeholder={text.emailPlaceholder}
                           className="w-full pl-12 pr-4 py-3 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-[#c9963a] focus:ring-1 focus:ring-amber-500 transition-all"
                           required
@@ -412,7 +490,10 @@ const StaffPage = () => {
                       <div>
                         <label className="block text-sm font-medium text-slate-400 mb-1.5">{text.tempPassword}</label>
                         <input 
+                          name="password"
                           type="password" 
+                          value={formData.password}
+                          onChange={handleInputChange}
                           placeholder={text.tempPasswordPlaceholder}
                           className="w-full px-4 py-3 bg-[#132845] border border-[#1e3a5f] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-[#c9963a] focus:ring-1 focus:ring-amber-500 transition-all"
                           required
@@ -430,7 +511,8 @@ const StaffPage = () => {
                               type="radio" 
                               name="role" 
                               value={role} 
-                              defaultChecked={editingStaff?.role === role || (!editingStaff && role === 'waiter')}
+                              checked={formData.role === role}
+                              onChange={handleInputChange}
                               className="peer sr-only" 
                             />
                             <div className="py-2.5 px-3 text-center bg-[#132845] border border-[#1e3a5f] rounded-xl text-sm font-medium text-slate-400 peer-checked:bg-[#c9963a]/10 peer-checked:text-[#c9963a] peer-checked:border-[#c9963a]/50 transition-all">
@@ -442,11 +524,11 @@ const StaffPage = () => {
                     </div>
 
                     <div className="pt-6 flex gap-3 border-t border-[#1e3a5f]">
-                      <button type="button" onClick={handleCloseModal} className="flex-1 py-3 px-4 bg-[#132845] hover:bg-[#1e3a5f] text-slate-300 rounded-xl font-medium transition-colors">
+                      <button type="button" onClick={handleCloseModal} disabled={isSaving} className="flex-1 py-3 px-4 bg-[#132845] hover:bg-[#1e3a5f] text-slate-300 rounded-xl font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                         {text.cancel}
                       </button>
-                      <button type="submit" className="flex-1 py-3 px-4 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] rounded-xl font-semibold transition-colors">
-                        {editingStaff ? text.saveChanges : text.createAccount}
+                      <button type="submit" disabled={isSaving} className="flex-1 py-3 px-4 bg-[#c9963a] hover:bg-[#a07830] text-[#0d1f3c] rounded-xl font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                        {isSaving ? (isArabic ? 'جار الحفظ...' : 'Saving...') : (editingStaff ? text.saveChanges : text.createAccount)}
                       </button>
                     </div>
                   </form>
