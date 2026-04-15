@@ -80,6 +80,13 @@ const StaffPage = () => {
           cancel: 'إلغاء',
           saveChanges: 'حفظ التعديلات',
           createAccount: 'إنشاء حساب',
+          staffCreated: 'تم إنشاء الموظف بنجاح',
+          staffUpdated: 'تم تحديث الموظف بنجاح',
+          staffDeactivated: 'تم إيقاف الموظف بنجاح',
+          updateFailed: 'فشل تحديث الموظف',
+          createFailed: 'فشل إنشاء الموظف',
+          deactivateFailed: 'فشل إيقاف الموظف',
+          requiredFields: 'الرجاء تعبئة الحقول المطلوبة',
         }
       : {
           loadFailed: 'Failed to load staff',
@@ -117,6 +124,13 @@ const StaffPage = () => {
           cancel: 'Cancel',
           saveChanges: 'Save Changes',
           createAccount: 'Create Account',
+          staffCreated: 'Staff member created successfully',
+          staffUpdated: 'Staff member updated successfully',
+          staffDeactivated: 'Staff member deactivated successfully',
+          updateFailed: 'Failed to update staff member',
+          createFailed: 'Failed to create staff member',
+          deactivateFailed: 'Failed to deactivate staff member',
+          requiredFields: 'Please fill all required fields',
         }
   ), [isArabic]);
 
@@ -182,11 +196,6 @@ const StaffPage = () => {
   const handleSubmitStaff = async (event) => {
     event.preventDefault();
 
-    if (!editingStaff?._id) {
-      handleCloseModal();
-      return;
-    }
-
     const payload = {
       name: String(formData.name || '').trim(),
       phone: String(formData.phone || '').trim(),
@@ -194,29 +203,66 @@ const StaffPage = () => {
       role: String(formData.role || 'waiter').trim(),
     };
 
+    const password = String(formData.password || '').trim();
+
     if (!payload.name || !payload.email || !payload.role) {
-      toast.error(isArabic ? 'الرجاء تعبئة الحقول المطلوبة' : 'Please fill all required fields');
+      toast.error(text.requiredFields);
+      return;
+    }
+
+    if (!editingStaff?._id && !password) {
+      toast.error(text.requiredFields);
       return;
     }
 
     setIsSaving(true);
 
     try {
-      const response = await api.put(`/users/${editingStaff._id}`, payload);
-      const updatedUser = response?.data?.user || { ...editingStaff, ...payload };
+      if (editingStaff?._id) {
+        const response = await api.put(`/users/${editingStaff._id}`, payload);
+        const updatedUser = response?.data?.user || { ...editingStaff, ...payload };
 
-      setStaff((previousStaff) => previousStaff.map((person) => (
-        person._id === editingStaff._id
-          ? { ...person, ...updatedUser }
-          : person
-      )));
+        setStaff((previousStaff) => previousStaff.map((person) => (
+          person._id === editingStaff._id
+            ? { ...person, ...updatedUser }
+            : person
+        )));
 
-      toast.success(isArabic ? 'تم تحديث الموظف بنجاح' : 'Staff member updated successfully');
+        toast.success(text.staffUpdated);
+      } else {
+        const response = await api.post('/staff', {
+          ...payload,
+          password,
+        });
+
+        const createdUser = response?.data?.user;
+        if (createdUser) {
+          setStaff((previousStaff) => [createdUser, ...previousStaff]);
+        }
+
+        toast.success(text.staffCreated);
+      }
+
       handleCloseModal(true);
     } catch (error) {
-      toast.error(error?.response?.data?.message || (isArabic ? 'فشل تحديث الموظف' : 'Failed to update staff member'));
+      const fallbackMessage = editingStaff?._id ? text.updateFailed : text.createFailed;
+      toast.error(error?.response?.data?.message || fallbackMessage);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeactivateStaff = async (staffId) => {
+    try {
+      await api.delete(`/users/${staffId}`);
+      setStaff((previousStaff) => previousStaff.map((person) => (
+        person._id === staffId
+          ? { ...person, isActive: false }
+          : person
+      )));
+      toast.success(text.staffDeactivated);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || text.deactivateFailed);
     }
   };
 
@@ -389,6 +435,7 @@ const StaffPage = () => {
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button 
+                            onClick={() => handleDeactivateStaff(person._id)}
                             className="p-2 bg-[#0d1f3c] border border-[#1e3a5f] text-slate-400 hover:text-red-500 rounded-xl transition-colors"
                             title={text.deactivateDelete}
                           >
