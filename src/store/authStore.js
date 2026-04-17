@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 
 const getSafeStorage = () => {
-  if (typeof window !== 'undefined' && window.localStorage && typeof window.localStorage.getItem === 'function') {
-    return window.localStorage;
+  if (typeof window !== 'undefined' && window.sessionStorage && typeof window.sessionStorage.getItem === 'function') {
+    return window.sessionStorage;
   }
 
-  if (typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function') {
-    return localStorage;
+  if (typeof sessionStorage !== 'undefined' && typeof sessionStorage.getItem === 'function') {
+    return sessionStorage;
   }
 
   return null;
