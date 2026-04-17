@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import LayoutDashboard from 'lucide-react/dist/esm/icons/layout-dashboard';
 import ShoppingBag from 'lucide-react/dist/esm/icons/shopping-bag';
@@ -6,6 +6,7 @@ import UtensilsCrossed from 'lucide-react/dist/esm/icons/utensils-crossed';
 import Grid from 'lucide-react/dist/esm/icons/grid';
 import Users from 'lucide-react/dist/esm/icons/users';
 import BarChart2 from 'lucide-react/dist/esm/icons/bar-chart-2';
+import MessageSquare from 'lucide-react/dist/esm/icons/message-square';
 import LogOut from 'lucide-react/dist/esm/icons/log-out';
 import Menu from 'lucide-react/dist/esm/icons/menu';
 import X from 'lucide-react/dist/esm/icons/x';
@@ -14,9 +15,12 @@ import { useTranslation } from 'react-i18next';
 import useAuthStore from '../store/authStore';
 import logo from '../assets/logo.webp';
 import LanguageSwitcher from '../components/shared/LanguageSwitcher';
+import { connectSocket } from '../services/socket';
+import { getUnreadFeedbackCount, subscribeToFeedbackEvents } from '../services/feedbacks';
 
 const ManagerLayout = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [unreadFeedbackCount, setUnreadFeedbackCount] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
@@ -24,9 +28,83 @@ const ManagerLayout = ({ children }) => {
   const currentLanguage = String(i18n.resolvedLanguage || i18n.language || 'en').split('-')[0];
   const isRtl = i18n.dir(currentLanguage) === 'rtl';
 
+  const restaurantId = useMemo(() => {
+    if (!user?.restaurant) return '';
+    if (typeof user.restaurant === 'object' && user.restaurant._id) {
+      return String(user.restaurant._id);
+    }
+    return String(user.restaurant);
+  }, [user?.restaurant]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (user?.role !== 'manager') {
+      return undefined;
+    }
+
+    const refreshUnreadCount = async () => {
+      try {
+        const unreadCount = await getUnreadFeedbackCount();
+        if (isActive) {
+          setUnreadFeedbackCount(unreadCount);
+        }
+      } catch {
+        if (isActive) {
+          setUnreadFeedbackCount(0);
+        }
+      }
+    };
+
+    refreshUnreadCount();
+
+    const pollInterval = window.setInterval(refreshUnreadCount, 20000);
+    const socket = connectSocket();
+
+    if (restaurantId) {
+      socket.emit('joinRestaurant', restaurantId);
+    }
+
+    const handleRealtimeFeedback = () => {
+      refreshUnreadCount();
+    };
+
+    socket.on('feedbackCreated', handleRealtimeFeedback);
+    socket.on('feedback_created', handleRealtimeFeedback);
+    socket.on('feedbackUpdated', handleRealtimeFeedback);
+    socket.on('feedback_updated', handleRealtimeFeedback);
+
+    const unsubscribeFeedbackEvents = subscribeToFeedbackEvents(() => {
+      refreshUnreadCount();
+    });
+
+    const handleOnline = () => {
+      refreshUnreadCount();
+    };
+
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      isActive = false;
+      window.clearInterval(pollInterval);
+      window.removeEventListener('online', handleOnline);
+      unsubscribeFeedbackEvents();
+      socket.off('feedbackCreated', handleRealtimeFeedback);
+      socket.off('feedback_created', handleRealtimeFeedback);
+      socket.off('feedbackUpdated', handleRealtimeFeedback);
+      socket.off('feedback_updated', handleRealtimeFeedback);
+    };
+  }, [restaurantId, user?.role]);
+
   const navLinks = [
     { name: t('manager.layout.dashboard'), path: '/manager/dashboard', icon: LayoutDashboard },
     { name: t('manager.layout.orders'), path: '/manager/orders', icon: ShoppingBag },
+    {
+      name: t('manager.layout.feedbacks', { defaultValue: 'Feedbacks' }),
+      path: '/manager/feedbacks',
+      icon: MessageSquare,
+      badge: unreadFeedbackCount,
+    },
     { name: t('manager.layout.menu'), path: '/manager/menu', icon: UtensilsCrossed },
     { name: t('manager.layout.tables'), path: '/manager/tables', icon: Grid },
     { name: t('manager.layout.staff'), path: '/manager/staff', icon: Users },
@@ -104,6 +182,11 @@ const ManagerLayout = ({ children }) => {
               >
                 <Icon className="w-5 h-5" />
                 <span>{link.name}</span>
+                {Number(link.badge || 0) > 0 && (
+                  <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-[#7c6af7] px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    {Number(link.badge) > 99 ? '99+' : Number(link.badge)}
+                  </span>
+                )}
               </Link>
             );
           })}

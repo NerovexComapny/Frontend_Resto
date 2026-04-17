@@ -16,9 +16,16 @@ import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { publicApi } from '../../services/api';
 import { connectSocket } from '../../services/socket';
+import FeedbackForm from '../../components/client/FeedbackForm';
 import { toast } from 'react-hot-toast';
 import backgroundImg from '../../assets/background.png';
 import logo from '../../assets/logo.webp';
+import {
+  calculateCartMetrics,
+  resolveClientTableId,
+  shouldRenderFeedbackSection,
+  toClientOrderStatus,
+} from '../../utils/clientWorkflow';
 
 const DEFAULT_MENU_CATEGORY_ID = 'all';
 const DEFAULT_CLIENT_INACTIVITY_TIMEOUT_MS = 15000;
@@ -83,19 +90,11 @@ const toId = (value) => {
   return String(value);
 };
 
-const toClientOrderStatus = (status) => {
-  if (status === 'pending' || status === 'confirmed' || status === 'new') return 'received';
-  if (status === 'preparing' || status === 'in_progress') return 'preparing';
-  if (status === 'ready') return 'ready';
-  if (status === 'served') return 'served';
-  return 'received';
-};
-
 const MenuPage = () => {
   console.log('MENU PAGE RENDERED');
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
-  const tableId = String(searchParams.get('tableId') || searchParams.get('table') || '').trim();
+  const tableId = resolveClientTableId(searchParams);
   const restaurantQueryValue = String(searchParams.get('restaurant') || '').trim();
   const restaurantIdQueryValue = String(searchParams.get('restaurantId') || restaurantQueryValue || '').trim();
   const [tableNumber, setTableNumber] = useState(tableId || '--');
@@ -263,8 +262,7 @@ const MenuPage = () => {
     return matchesCategory && matchesSearch;
   });
 
-  const cartTotal = cart.reduce((sum, current) => sum + (current.item.price * current.quantity), 0);
-  const cartCount = cart.reduce((sum, current) => sum + current.quantity, 0);
+  const { total: cartTotal, count: cartCount } = calculateCartMetrics(cart);
 
   const scrollToTop = () => {
     if (typeof window !== 'undefined') {
@@ -605,6 +603,10 @@ const MenuPage = () => {
               );
             })}
           </div>
+
+          {shouldRenderFeedbackSection(orderPlaced, trackedOrderStatus) && (
+            <FeedbackForm tableId={tableId} orderId={trackedOrderId} />
+          )}
 
           <button
             onClick={() => {

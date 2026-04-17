@@ -1,14 +1,60 @@
 import { create } from 'zustand';
 
+const getSafeStorage = () => {
+  if (typeof window !== 'undefined' && window.localStorage && typeof window.localStorage.getItem === 'function') {
+    return window.localStorage;
+  }
+
+  if (typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function') {
+    return localStorage;
+  }
+
+  return null;
+};
+
+const readToken = () => {
+  const storage = getSafeStorage();
+  return storage?.getItem('token') || null;
+};
+
+const readUser = () => {
+  const storage = getSafeStorage();
+  const rawUser = storage?.getItem('user');
+  if (!rawUser) return null;
+
+  try {
+    return JSON.parse(rawUser);
+  } catch {
+    return null;
+  }
+};
+
+const writeStorage = (key, value) => {
+  const storage = getSafeStorage();
+  if (!storage) return;
+
+  storage.setItem(key, value);
+};
+
+const removeStorage = (key) => {
+  const storage = getSafeStorage();
+  if (!storage) return;
+
+  storage.removeItem(key);
+};
+
+const initialToken = readToken();
+const initialUser = readUser();
+
 const useAuthStore = create((set) => ({
-  user: null,
-  token: localStorage.getItem('token') || null,
-  isAuthenticated: !!localStorage.getItem('token'),
+  user: initialUser,
+  token: initialToken,
+  isAuthenticated: Boolean(initialToken),
   isLoading: false,
 
   login: (userData, token) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
+    writeStorage('token', token);
+    writeStorage('user', JSON.stringify(userData));
     set({
       user: userData,
       token: token,
@@ -17,8 +63,8 @@ const useAuthStore = create((set) => ({
   },
 
   logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    removeStorage('token');
+    removeStorage('user');
     set({
       user: null,
       token: null,

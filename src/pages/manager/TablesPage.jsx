@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import Users from 'lucide-react/dist/esm/icons/users';
@@ -13,12 +13,15 @@ import ManagerLayout from '../../layouts/ManagerLayout';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
+import { connectSocket } from '../../services/socket';
+import { TABLE_REALTIME_EVENTS } from '../../utils/tablesRealtime';
 
 const getStatusStyle = (status) => {
   switch (status) {
     case 'available': return { dot: 'bg-emerald-500', text: 'text-emerald-500', bg: 'bg-[#0d1f3c] hover:bg-[#132845]', border: 'border-[#1e3a5f] border-emerald-500/20' };
     case 'occupied': return { dot: 'bg-red-500', text: 'text-red-500', bg: 'bg-red-500/5 hover:bg-red-500/10', border: 'border-red-500/30' };
     case 'reserved': return { dot: 'bg-[#7c6af7]', text: 'text-[#7c6af7]', bg: 'bg-[#7c6af7]/5 hover:bg-[#7c6af7]/10', border: 'border-[#7c6af7]/30' };
+    case 'cleaning': return { dot: 'bg-amber-500', text: 'text-amber-500', bg: 'bg-amber-500/5 hover:bg-amber-500/10', border: 'border-amber-500/30' };
     default: return { dot: 'bg-slate-500', text: 'text-slate-500', bg: 'bg-[#0d1f3c]', border: 'border-[#1e3a5f]' };
   }
 };
@@ -29,6 +32,17 @@ const getTablesEndpoint = () => {
 };
 
 const getRegenerateQRsEndpoint = () => `${getTablesEndpoint()}/regenerate-all-qr`;
+
+const getRequestError = (error) => {
+  return error?.response?.data?.message || error?.message || 'Request failed';
+};
+
+const toRestaurantId = (restaurant) => {
+  if (!restaurant) return '';
+  if (typeof restaurant === 'string') return restaurant;
+  if (typeof restaurant === 'object' && restaurant._id) return String(restaurant._id);
+  return String(restaurant);
+};
 
 const TablesPage = () => {
   const { t } = useTranslation();
@@ -42,10 +56,7 @@ const TablesPage = () => {
   const [newTable, setNewTable] = useState({ number: '', capacity: '4' });
   const [editTable, setEditTable] = useState({ number: '', capacity: '4', status: 'available' });
   const user = useAuthStore((state) => state.user);
-
-  const getRequestError = (error) => {
-    return error?.response?.data?.message || error?.message || 'Request failed';
-  };
+  const restaurantId = toRestaurantId(user?.restaurant);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -63,34 +74,64 @@ const TablesPage = () => {
     exit: { opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.2 } }
   };
 
-  useEffect(() => {
-    let isActive = true;
-
-    const fetchTables = async () => {
+  const fetchTables = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
       setLoading(true);
-      try {
-        const response = await api.get(getTablesEndpoint());
-        if (!isActive) return;
+    }
 
-        const apiTables = Array.isArray(response?.data?.tables) ? response.data.tables : [];
-        setTables(apiTables);
-      } catch (error) {
-        if (isActive) {
-          toast.error(getRequestError(error));
-        }
-      } finally {
-        if (isActive) {
-          setLoading(false);
-        }
+    try {
+      const response = await api.get(getTablesEndpoint());
+      const apiTables = Array.isArray(response?.data?.tables) ? response.data.tables : [];
+      setTables(apiTables);
+      return apiTables;
+    } catch (error) {
+      if (!silent) {
+        toast.error(getRequestError(error));
       }
-    };
+      return [];
+    } finally {
+      if (!silent) {
+        setLoading(false);
+      }
+    }
+  }, []);
 
+  useEffect(() => {
     fetchTables();
 
-    return () => {
-      isActive = false;
+    // BUG FIX: table availability real-time sync — tables were only fetched once, so live status changes never re-rendered the manager grid.
+    const syncInterval = window.setInterval(() => {
+      fetchTables({ silent: true });
+    }, 10000);
+
+    const socket = connectSocket();
+    if (restaurantId) {
+      socket.emit('joinRestaurant', restaurantId);
+    }
+
+    const handleRealtimeSync = () => {
+      fetchTables({ silent: true });
     };
-  }, []);
+
+    TABLE_REALTIME_EVENTS.forEach((eventName) => {
+      socket.on(eventName, handleRealtimeSync);
+    });
+
+    const handleOnline = () => {
+      fetchTables({ silent: true });
+    };
+
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      window.clearInterval(syncInterval);
+      window.removeEventListener('online', handleOnline);
+
+      TABLE_REALTIME_EVENTS.forEach((eventName) => {
+        socket.off(eventName, handleRealtimeSync);
+      });
+    };
+  }, [fetchTables, restaurantId]);
 
   const handleCreateTable = async (event) => {
     event.preventDefault();
@@ -219,10 +260,8 @@ const TablesPage = () => {
     setIsRegeneratingQrs(true);
     try {
       await api.post(getRegenerateQRsEndpoint());
-      const response = await api.get(getTablesEndpoint());
-      const apiTables = Array.isArray(response?.data?.tables) ? response.data.tables : [];
-      setTables(apiTables);
-      toast.success(t('manager.tables.qrRegeneratedAll', { count: apiTables.length }));
+      const refreshedTables = await fetchTables({ silent: true });
+      toast.success(t('manager.tables.qrRegeneratedAll', { count: refreshedTables.length }));
     } catch (error) {
       toast.error(getRequestError(error));
     } finally {
@@ -252,6 +291,10 @@ const TablesPage = () => {
               <span className="inline-flex items-center gap-1">
                 <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#7c6af7] translate-y-px"></span>
                 {t('manager.tables.reserved')}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 translate-y-px"></span>
+                {t('manager.tables.cleaning', { defaultValue: 'Cleaning' })}
               </span>
             </div>
           </div>
@@ -486,6 +529,7 @@ const TablesPage = () => {
                       <option value="available">{t('manager.tables.available')}</option>
                       <option value="occupied">{t('manager.tables.occupied')}</option>
                       <option value="reserved">{t('manager.tables.reserved')}</option>
+                      <option value="cleaning">{t('manager.tables.cleaning', { defaultValue: 'Cleaning' })}</option>
                     </select>
                   </div>
 

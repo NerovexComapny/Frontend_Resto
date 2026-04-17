@@ -36,6 +36,7 @@
     "layout": {
       "dashboard": "Tableau de bord",
       "orders": "Commandes",
+      "feedbacks": "Avis",
       "menu": "Menu",
       "tables": "Tables",
       "staff": "Équipe",
@@ -99,6 +100,7 @@
       "available": "Disponible",
       "occupied": "Occupée",
       "reserved": "Réservée",
+      "cleaning": "Nettoyage",
       "seats": "Places",
       "viewQr": "Voir le QR code",
       "regenerateAllQr": "Régénérer tous les QR",

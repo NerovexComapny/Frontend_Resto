@@ -9,23 +9,11 @@ import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
 import { connectSocket } from '../../services/socket';
 import LanguageSwitcher from '../../components/shared/LanguageSwitcher';
+import { toApiStatus, toKitchenStatus } from '../../utils/kitchenStatus';
 
 const getOrdersEndpoint = () => {
   const baseURL = String(api.defaults.baseURL || '');
   return /\/api\/?$/.test(baseURL) ? '/orders' : '/api/orders';
-};
-
-const toKitchenStatus = (status) => {
-  if (status === 'pending' || status === 'confirmed' || status === 'new') return 'new';
-  if (status === 'preparing' || status === 'in_progress') return 'in_progress';
-  if (status === 'ready') return 'ready';
-  if (status === 'served') return 'served';
-  return 'new';
-};
-
-const toApiStatus = (status) => {
-  if (status === 'in_progress') return 'preparing';
-  return status;
 };
 
 const toId = (value) => {

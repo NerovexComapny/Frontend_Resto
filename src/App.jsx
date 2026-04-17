@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import useAuthStore from './store/authStore';
+import { getRoleRedirect, isRouteAuthorized } from './utils/routeGuards';
 
 // Public Pages
 const LoginPage = React.lazy(() => import('./pages/auth/LoginPage'));
@@ -14,31 +15,22 @@ const TablesPage = React.lazy(() => import('./pages/manager/TablesPage'));
 const OrdersPage = React.lazy(() => import('./pages/manager/OrdersPage'));
 const StaffPage = React.lazy(() => import('./pages/manager/StaffPage'));
 const ReportsPage = React.lazy(() => import('./pages/manager/ReportsPage'));
+const FeedbacksPage = React.lazy(() => import('./pages/manager/FeedbacksPage'));
 
 // Other Staff Pages
 const WaiterOrdersPage = React.lazy(() => import('./pages/waiter/WaiterOrdersPage'));
 const CashierPage = React.lazy(() => import('./pages/cashier/CashierPage'));
 const KitchenDisplayPage = React.lazy(() => import('./pages/kitchen/KitchenDisplayPage'));
 
-const getRoleRedirect = (role) => {
-  switch (role) {
-    case 'manager': return '/manager/dashboard';
-    case 'waiter': return '/waiter/orders';
-    case 'cashier': return '/cashier/payments';
-    case 'cook': return '/kitchen';
-    default: return '/login';
-  }
-};
-
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { token, user } = useAuthStore();
 
-  if (!token) {
-    console.log('PROTECTED_ROUTE - no token, redirecting');
-    return <Navigate to="/login" replace />;
-  }
+  if (!isRouteAuthorized(token, user, allowedRoles)) {
+    if (!token) {
+      return <Navigate to="/login" replace />;
+    }
 
-  if (allowedRoles && user?.role && !allowedRoles.includes(user.role)) {
+    console.log('PROTECTED_ROUTE - no token, redirecting');
     return <Navigate to={getRoleRedirect(user.role)} replace />;
   }
 
@@ -74,6 +66,7 @@ const App = () => {
           <Route path="/manager/menu" element={<ProtectedRoute allowedRoles={['manager']}><MenuManagementPage /></ProtectedRoute>} />
           <Route path="/manager/tables" element={<ProtectedRoute allowedRoles={['manager']}><TablesPage /></ProtectedRoute>} />
           <Route path="/manager/orders" element={<ProtectedRoute allowedRoles={['manager']}><OrdersPage /></ProtectedRoute>} />
+          <Route path="/manager/feedbacks" element={<ProtectedRoute allowedRoles={['manager']}><FeedbacksPage /></ProtectedRoute>} />
           <Route path="/manager/staff" element={<ProtectedRoute allowedRoles={['manager']}><StaffPage /></ProtectedRoute>} />
           <Route path="/manager/reports" element={<ProtectedRoute allowedRoles={['manager']}><ReportsPage /></ProtectedRoute>} />
 

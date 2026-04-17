@@ -36,6 +36,7 @@
     "layout": {
       "dashboard": "لوحة التحكم",
       "orders": "الطلبات",
+      "feedbacks": "التقييمات",
       "menu": "القائمة",
       "tables": "الطاولات",
       "staff": "الفريق",
@@ -99,6 +100,7 @@
       "available": "متاحة",
       "occupied": "مشغولة",
       "reserved": "محجوزة",
+      "cleaning": "قيد التنظيف",
       "seats": "مقاعد",
       "viewQr": "عرض QR",
       "regenerateAllQr": "إعادة توليد كل QR",

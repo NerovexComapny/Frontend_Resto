@@ -36,6 +36,7 @@
     "layout": {
       "dashboard": "Dashboard",
       "orders": "Orders",
+      "feedbacks": "Feedbacks",
       "menu": "Menu",
       "tables": "Tables",
       "staff": "Staff",
@@ -99,6 +100,7 @@
       "available": "Available",
       "occupied": "Occupied",
       "reserved": "Reserved",
+      "cleaning": "Cleaning",
       "seats": "Seats",
       "viewQr": "View QR Code",
       "regenerateAllQr": "Regenerate All QRs",
