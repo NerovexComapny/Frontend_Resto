@@ -19,11 +19,7 @@ import { getSocket, connectSocket } from '../../services/socket';
 import { toast } from 'react-hot-toast';
 import backgroundImg from '../../assets/background.png';
 import logo from '../../assets/logo.webp';
-import {
-  calculateCartMetrics,
-  resolveClientTableId,
-  toClientOrderStatus,
-} from '../../utils/clientWorkflow';
+
 
 const DEFAULT_MENU_CATEGORY_ID = 'all';
 const DEFAULT_CLIENT_INACTIVITY_TIMEOUT_MS = 15000;
@@ -316,13 +312,13 @@ const MenuPage = () => {
           suppressGlobalErrorToast: true
         });
         const order = response?.data?.order;
-        
+
         if (order && isMounted) {
           const nextStatus = toClientOrderStatus(order?.status);
           const details = Array.isArray(order?.items)
             ? order.items
-                .map((item) => `${Number(item?.quantity || 1)}x ${item?.name || item?.menuItem?.name?.fr || 'Item'}`)
-                .join(', ')
+              .map((item) => `${Number(item?.quantity || 1)}x ${item?.name || item?.menuItem?.name?.fr || 'Item'}`)
+              .join(', ')
             : trackedOrderDetails;
 
           setTrackedOrderStatus(nextStatus);
@@ -372,8 +368,8 @@ const MenuPage = () => {
       const nextStatus = toClientOrderStatus(order?.status);
       const details = Array.isArray(order?.items)
         ? order.items
-            .map((item) => `${Number(item?.quantity || 1)}x ${item?.name || item?.menuItem?.name?.fr || 'Item'}`)
-            .join(', ')
+          .map((item) => `${Number(item?.quantity || 1)}x ${item?.name || item?.menuItem?.name?.fr || 'Item'}`)
+          .join(', ')
         : trackedOrderDetails;
 
       setTrackedOrderId(incomingOrderId);
@@ -678,11 +674,10 @@ const MenuPage = () => {
                   <button
                     key={category.id}
                     onClick={() => setActiveCategory(category.id)}
-                    className={`shrink-0 min-h-10 px-4 py-2 rounded-xl border transition-all text-left active:scale-[0.98] ${
-                      isActive
+                    className={`shrink-0 min-h-10 px-4 py-2 rounded-xl border transition-all text-left active:scale-[0.98] ${isActive
                         ? 'bg-[#c9963a] text-white border-[#c9963a] shadow-sm'
                         : 'bg-white text-[#0a1628] border-[#c9963a]/30'
-                    }`}
+                      }`}
                   >
                     <p className="text-sm font-bold leading-tight">{category.name}</p>
                     <p dir="rtl" className={`text-[11px] text-right leading-tight mt-0.5 ${isActive ? 'text-white/90' : 'text-[#0a1628]/70'}`}>
@@ -903,11 +898,10 @@ const MenuPage = () => {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setPaymentMethod('cash')}
-                      className={`p-3 rounded-xl border-2 transition-colors flex flex-col items-center gap-2 ${
-                        paymentMethod === 'cash'
+                      className={`p-3 rounded-xl border-2 transition-colors flex flex-col items-center gap-2 ${paymentMethod === 'cash'
                           ? 'bg-[#0a1628] text-white border-[#0a1628]'
                           : 'bg-white text-[#0a1628] border-[#0a1628]/20'
-                      }`}
+                        }`}
                     >
                       <Banknote className="w-5 h-5" />
                       <span className="text-xs font-bold uppercase tracking-wider">{t('clientMenu.cash')}</span>
@@ -915,11 +909,10 @@ const MenuPage = () => {
 
                     <button
                       onClick={() => setPaymentMethod('card')}
-                      className={`p-3 rounded-xl border-2 transition-colors flex flex-col items-center gap-2 ${
-                        paymentMethod === 'card'
+                      className={`p-3 rounded-xl border-2 transition-colors flex flex-col items-center gap-2 ${paymentMethod === 'card'
                           ? 'bg-[#0891b2] text-white border-[#0891b2]'
                           : 'bg-white text-[#0a1628] border-[#0a1628]/20'
-                      }`}
+                        }`}
                     >
                       <CreditCard className="w-5 h-5" />
                       <span className="text-xs font-bold uppercase tracking-wider">{t('clientMenu.card')}</span>
