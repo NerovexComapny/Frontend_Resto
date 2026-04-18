@@ -91,11 +91,11 @@ const normalizeOrder = (order) => {
   };
 };
 
-const formatCurrencyTnd = (value) => `${Number(value || 0).toFixed(3)} TND`;
+const formatCurrencyTnd = (value) => `${Number(value || 0).toFixed(2)} TND`;
 
 const buildFallbackReceiptPdfBlob = (order) => {
   const items = Array.isArray(order?.items) ? order.items : [];
-  const pageWidth = 226.77;
+  const pageWidth = 280;
   const estimatedHeight = Math.max(420, 280 + items.length * 34);
   const margin = 14;
 
@@ -150,8 +150,8 @@ const buildFallbackReceiptPdfBlob = (order) => {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.text('Item', margin, y);
-  doc.text('Qty', margin + 104, y, { align: 'right' });
-  doc.text('PU', margin + 143, y, { align: 'right' });
+  doc.text('Qty', margin + 90, y, { align: 'right' });
+  doc.text('PU', margin + 160, y, { align: 'right' });
   doc.text('Total', pageWidth - margin, y, { align: 'right' });
   y += 8;
   divider();
@@ -167,8 +167,8 @@ const buildFallbackReceiptPdfBlob = (order) => {
     const wrappedName = doc.splitTextToSize(name, 92);
 
     doc.text(wrappedName, margin, y);
-    doc.text(String(qty), margin + 104, y, { align: 'right' });
-    doc.text(formatCurrencyTnd(unitPrice), margin + 143, y, { align: 'right' });
+    doc.text(String(qty), margin + 90, y, { align: 'right' });
+    doc.text(formatCurrencyTnd(unitPrice), margin + 160, y, { align: 'right' });
     doc.text(formatCurrencyTnd(lineTotal), pageWidth - margin, y, { align: 'right' });
 
     y += Math.max(12, wrappedName.length * 9) + 2;
