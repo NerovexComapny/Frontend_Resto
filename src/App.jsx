@@ -15,7 +15,6 @@ const TablesPage = React.lazy(() => import('./pages/manager/TablesPage'));
 const OrdersPage = React.lazy(() => import('./pages/manager/OrdersPage'));
 const StaffPage = React.lazy(() => import('./pages/manager/StaffPage'));
 const ReportsPage = React.lazy(() => import('./pages/manager/ReportsPage'));
-const FeedbacksPage = React.lazy(() => import('./pages/manager/FeedbacksPage'));
 
 // Other Staff Pages
 const WaiterOrdersPage = React.lazy(() => import('./pages/waiter/WaiterOrdersPage'));
@@ -66,7 +65,6 @@ const App = () => {
           <Route path="/manager/menu" element={<ProtectedRoute allowedRoles={['manager']}><MenuManagementPage /></ProtectedRoute>} />
           <Route path="/manager/tables" element={<ProtectedRoute allowedRoles={['manager']}><TablesPage /></ProtectedRoute>} />
           <Route path="/manager/orders" element={<ProtectedRoute allowedRoles={['manager']}><OrdersPage /></ProtectedRoute>} />
-          <Route path="/manager/feedbacks" element={<ProtectedRoute allowedRoles={['manager']}><FeedbacksPage /></ProtectedRoute>} />
           <Route path="/manager/staff" element={<ProtectedRoute allowedRoles={['manager']}><StaffPage /></ProtectedRoute>} />
           <Route path="/manager/reports" element={<ProtectedRoute allowedRoles={['manager']}><ReportsPage /></ProtectedRoute>} />
 

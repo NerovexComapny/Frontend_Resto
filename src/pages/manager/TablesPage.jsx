@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import Users from 'lucide-react/dist/esm/icons/users';
@@ -13,8 +13,21 @@ import ManagerLayout from '../../layouts/ManagerLayout';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
-import { connectSocket } from '../../services/socket';
-import { TABLE_REALTIME_EVENTS } from '../../utils/tablesRealtime';
+import { getSocket } from '../../services/socket';
+
+const TABLE_REALTIME_EVENTS = [
+  'tableStatusUpdated',
+  'table_updated',
+  'table_created',
+  'table_deleted',
+  'newOrder',
+  'new_order',
+  'orderStatusUpdated',
+  'order_updated',
+  'orderCancelled',
+  'connect',
+  'reconnect',
+];
 
 const getStatusStyle = (status) => {
   switch (status) {
@@ -104,7 +117,8 @@ const TablesPage = () => {
       fetchTables({ silent: true });
     }, 10000);
 
-    const socket = connectSocket();
+    const socket = getSocket();
+    if (!socket) return;
     if (restaurantId) {
       socket.emit('joinRestaurant', restaurantId);
     }

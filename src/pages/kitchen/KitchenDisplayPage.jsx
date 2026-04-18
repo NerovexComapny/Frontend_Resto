@@ -7,13 +7,25 @@ import Flame from 'lucide-react/dist/esm/icons/flame';
 import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
-import { connectSocket } from '../../services/socket';
+import { getSocket } from '../../services/socket';
 import LanguageSwitcher from '../../components/shared/LanguageSwitcher';
-import { toApiStatus, toKitchenStatus } from '../../utils/kitchenStatus';
 
 const getOrdersEndpoint = () => {
   const baseURL = String(api.defaults.baseURL || '');
   return /\/api\/?$/.test(baseURL) ? '/orders' : '/api/orders';
+};
+
+const toKitchenStatus = (status) => {
+  if (status === 'pending' || status === 'confirmed' || status === 'new') return 'new';
+  if (status === 'preparing' || status === 'in_progress') return 'in_progress';
+  if (status === 'ready') return 'ready';
+  if (status === 'served') return 'served';
+  return 'new';
+};
+
+const toApiStatus = (status) => {
+  if (status === 'in_progress') return 'preparing';
+  return status;
 };
 
 const toId = (value) => {
@@ -131,7 +143,7 @@ const OrderTicket = memo(({ order, onAction, isUpdating, labels }) => {
       <div className="flex-1 space-y-3 py-3 z-10">
         {order.items.map((item, idx) => (
           <div key={idx} className="flex items-start text-xl md:text-3xl font-bold text-slate-100 leading-tight">
-            <span className="text-[#c9963a] mr-3 opacity-70">•</span>
+            <span className="text-[#c9963a] mr-3 opacity-70">â€¢</span>
             <span>{item.name}</span>
           </div>
         ))}
@@ -258,7 +270,9 @@ const KitchenDisplayPage = () => {
 
     fetchKitchenOrders();
 
-    const socket = connectSocket();
+    const socket = getSocket();
+    if (!socket) return;
+
     socket.emit('joinRestaurant', restaurantId);
 
     const handleNewOrder = (data) => {

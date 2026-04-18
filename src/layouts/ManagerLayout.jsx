@@ -15,12 +15,10 @@ import { useTranslation } from 'react-i18next';
 import useAuthStore from '../store/authStore';
 import logo from '../assets/logo.webp';
 import LanguageSwitcher from '../components/shared/LanguageSwitcher';
-import { connectSocket } from '../services/socket';
-import { getUnreadFeedbackCount, subscribeToFeedbackEvents } from '../services/feedbacks';
+import { getSocket } from '../services/socket';
 
 const ManagerLayout = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [unreadFeedbackCount, setUnreadFeedbackCount] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
@@ -43,68 +41,21 @@ const ManagerLayout = ({ children }) => {
       return undefined;
     }
 
-    const refreshUnreadCount = async () => {
-      try {
-        const unreadCount = await getUnreadFeedbackCount();
-        if (isActive) {
-          setUnreadFeedbackCount(unreadCount);
-        }
-      } catch {
-        if (isActive) {
-          setUnreadFeedbackCount(0);
-        }
-      }
-    };
+    const socket = getSocket();
 
-    refreshUnreadCount();
-
-    const pollInterval = window.setInterval(refreshUnreadCount, 20000);
-    const socket = connectSocket();
-
-    if (restaurantId) {
+    if (restaurantId && socket) {
       socket.emit('joinRestaurant', restaurantId);
     }
 
-    const handleRealtimeFeedback = () => {
-      refreshUnreadCount();
-    };
-
-    socket.on('feedbackCreated', handleRealtimeFeedback);
-    socket.on('feedback_created', handleRealtimeFeedback);
-    socket.on('feedbackUpdated', handleRealtimeFeedback);
-    socket.on('feedback_updated', handleRealtimeFeedback);
-
-    const unsubscribeFeedbackEvents = subscribeToFeedbackEvents(() => {
-      refreshUnreadCount();
-    });
-
-    const handleOnline = () => {
-      refreshUnreadCount();
-    };
-
-    window.addEventListener('online', handleOnline);
-
     return () => {
       isActive = false;
-      window.clearInterval(pollInterval);
-      window.removeEventListener('online', handleOnline);
-      unsubscribeFeedbackEvents();
-      socket.off('feedbackCreated', handleRealtimeFeedback);
-      socket.off('feedback_created', handleRealtimeFeedback);
-      socket.off('feedbackUpdated', handleRealtimeFeedback);
-      socket.off('feedback_updated', handleRealtimeFeedback);
     };
   }, [restaurantId, user?.role]);
 
   const navLinks = [
     { name: t('manager.layout.dashboard'), path: '/manager/dashboard', icon: LayoutDashboard },
     { name: t('manager.layout.orders'), path: '/manager/orders', icon: ShoppingBag },
-    {
-      name: t('manager.layout.feedbacks', { defaultValue: 'Feedbacks' }),
-      path: '/manager/feedbacks',
-      icon: MessageSquare,
-      badge: unreadFeedbackCount,
-    },
+
     { name: t('manager.layout.menu'), path: '/manager/menu', icon: UtensilsCrossed },
     { name: t('manager.layout.tables'), path: '/manager/tables', icon: Grid },
     { name: t('manager.layout.staff'), path: '/manager/staff', icon: Users },

@@ -16,14 +16,12 @@ import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { publicApi } from '../../services/api';
 import { getSocket, connectSocket } from '../../services/socket';
-import FeedbackForm from '../../components/client/FeedbackForm';
 import { toast } from 'react-hot-toast';
 import backgroundImg from '../../assets/background.png';
 import logo from '../../assets/logo.webp';
 import {
   calculateCartMetrics,
   resolveClientTableId,
-  shouldRenderFeedbackSection,
   toClientOrderStatus,
 } from '../../utils/clientWorkflow';
 
@@ -607,9 +605,6 @@ const MenuPage = () => {
             })}
           </div>
 
-          {shouldRenderFeedbackSection(orderPlaced, trackedOrderStatus) && (
-            <FeedbackForm tableId={tableId} orderId={trackedOrderId} />
-          )}
 
           <button
             onClick={() => {
