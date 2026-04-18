@@ -2,8 +2,9 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const token = localStorage.getItem('token');
-  const role = localStorage.getItem('role'); // e.g., 'manager', 'waiter', 'cashier', 'kitchen'
+  const token = sessionStorage.getItem('token');
+  const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+  const role = user?.role; // e.g., 'manager', 'waiter', 'cashier', 'kitchen'
 
   if (!token) {
     return <Navigate to="/login" replace />;

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import Clock from 'lucide-react/dist/esm/icons/clock';
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
 import ChefHat from 'lucide-react/dist/esm/icons/chef-hat';
@@ -131,7 +131,7 @@ const OrderTicket = memo(({ order, onAction, isUpdating, labels }) => {
       <div className="flex-1 space-y-3 py-3 z-10">
         {order.items.map((item, idx) => (
           <div key={idx} className="flex items-start text-xl md:text-3xl font-bold text-slate-100 leading-tight">
-            <span className="text-[#c9963a] mr-3 opacity-70">•</span>
+            <span className="text-[#c9963a] mr-3 opacity-70">�</span>
             <span>{item.name}</span>
           </div>
         ))}
@@ -207,7 +207,7 @@ const KitchenDisplayPage = () => {
     if (user) return user;
 
     try {
-      return JSON.parse(localStorage.getItem('user') || 'null');
+      return JSON.parse(sessionStorage.getItem('user') || 'null');
     } catch {
       return null;
     }

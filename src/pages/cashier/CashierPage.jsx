@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import Search from 'lucide-react/dist/esm/icons/search';
 import Banknote from 'lucide-react/dist/esm/icons/banknote';
@@ -230,7 +230,7 @@ const CashierPage = () => {
     if (user?.restaurant) return user.restaurant;
 
     try {
-      return JSON.parse(localStorage.getItem('user') || 'null')?.restaurant || '';
+      return JSON.parse(sessionStorage.getItem('user') || 'null')?.restaurant || '';
     } catch {
       return '';
     }
