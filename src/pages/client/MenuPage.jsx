@@ -20,6 +20,26 @@ import { toast } from 'react-hot-toast';
 import backgroundImg from '../../assets/background.png';
 import logo from '../../assets/logo.webp';
 
+// --- Inlined clientWorkflow utilities ---
+const resolveClientTableId = (searchParams) => {
+  return String(searchParams.get('tableId') || searchParams.get('table') || '').trim();
+};
+
+const toClientOrderStatus = (status) => {
+  if (status === 'pending' || status === 'confirmed' || status === 'new') return 'received';
+  if (status === 'preparing' || status === 'in_progress') return 'preparing';
+  if (status === 'ready') return 'ready';
+  if (status === 'served') return 'served';
+  return 'received';
+};
+
+const calculateCartMetrics = (cart) => {
+  const total = cart.reduce((sum, current) => sum + (current.item.price * current.quantity), 0);
+  const count = cart.reduce((sum, current) => sum + current.quantity, 0);
+  return { total, count };
+};
+// --- End inlined utilities ---
+
 
 const DEFAULT_MENU_CATEGORY_ID = 'all';
 const DEFAULT_CLIENT_INACTIVITY_TIMEOUT_MS = 15000;
