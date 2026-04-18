@@ -1,7 +1,27 @@
 import React, { Suspense } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import useAuthStore from './store/authStore';
-import { getRoleRedirect, isRouteAuthorized } from './utils/routeGuards';
+const getRoleRedirect = (role) => {
+  switch (role) {
+    case 'manager': return '/manager/dashboard';
+    case 'waiter': return '/waiter/orders';
+    case 'cashier': return '/cashier/payments';
+    case 'cook': return '/kitchen';
+    default: return '/login';
+  }
+};
+
+const isRouteAuthorized = (token, user, allowedRoles) => {
+  if (!token) {
+    return false;
+  }
+
+  if (allowedRoles && user?.role && !allowedRoles.includes(user.role)) {
+    return false;
+  }
+
+  return true;
+};
 
 // Public Pages
 const LoginPage = React.lazy(() => import('./pages/auth/LoginPage'));
