@@ -1,6 +1,6 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { io } from 'socket.io-client';
+import { getSocket } from '../../services/socket';
 import Bell from 'lucide-react/dist/esm/icons/bell';
 import ChefHat from 'lucide-react/dist/esm/icons/chef-hat';
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
@@ -407,12 +407,12 @@ const WaiterOrdersPage = () => {
       return undefined;
     }
 
-    const baseApiUrl = String(import.meta.env.VITE_API_URL || api.defaults.baseURL || '');
-    const SOCKET_URL = baseApiUrl.replace(/\/api\/?$/, '');
-    socketRef.current = io(SOCKET_URL);
+    const socket = getSocket();
+    if (!socket) return;
+    socketRef.current = socket;
 
     // Join restaurant room for targeted order notifications.
-    socketRef.current.emit('joinRestaurant', restaurantId);
+    socket.emit('joinRestaurant', restaurantId);
 
     const handleOrderStatusUpdated = (data) => {
       const order = data?.order;
@@ -528,20 +528,18 @@ const WaiterOrdersPage = () => {
       });
     };
 
-    socketRef.current.on('orderStatusUpdated', handleOrderStatusUpdated);
-    socketRef.current.on('order_updated', handleOrderStatusUpdated);
-    socketRef.current.on('order_ready', handleOrderStatusUpdated);
-    socketRef.current.on('newOrder', handleNewOrder);
-    socketRef.current.on('new_order', handleNewOrder);
+    socket.on('orderStatusUpdated', handleOrderStatusUpdated);
+    socket.on('order_updated', handleOrderStatusUpdated);
+    socket.on('order_ready', handleOrderStatusUpdated);
+    socket.on('newOrder', handleNewOrder);
+    socket.on('new_order', handleNewOrder);
 
     return () => {
-      socketRef.current?.off('orderStatusUpdated', handleOrderStatusUpdated);
-      socketRef.current?.off('order_updated', handleOrderStatusUpdated);
-      socketRef.current?.off('order_ready', handleOrderStatusUpdated);
-      socketRef.current?.off('newOrder', handleNewOrder);
-      socketRef.current?.off('new_order', handleNewOrder);
-      socketRef.current?.disconnect();
-      socketRef.current = null;
+      socket.off('orderStatusUpdated', handleOrderStatusUpdated);
+      socket.off('order_updated', handleOrderStatusUpdated);
+      socket.off('order_ready', handleOrderStatusUpdated);
+      socket.off('newOrder', handleNewOrder);
+      socket.off('new_order', handleNewOrder);
     };
   }, [
     belongsToCurrentWaiter,

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { connectSocket, disconnectSocket } from '../services/socket';
 
 const getSafeStorage = () => {
   if (typeof window !== 'undefined' && window.sessionStorage && typeof window.sessionStorage.getItem === 'function') {
@@ -55,6 +56,7 @@ const useAuthStore = create((set) => ({
   login: (userData, token) => {
     writeStorage('token', token);
     writeStorage('user', JSON.stringify(userData));
+    connectSocket(token);
     set({
       user: userData,
       token: token,
@@ -63,6 +65,7 @@ const useAuthStore = create((set) => ({
   },
 
   logout: () => {
+    disconnectSocket();
     removeStorage('token');
     removeStorage('user');
     set({

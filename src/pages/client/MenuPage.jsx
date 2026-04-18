@@ -15,7 +15,7 @@ import Store from 'lucide-react/dist/esm/icons/store';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { publicApi } from '../../services/api';
-import { connectSocket } from '../../services/socket';
+import { getSocket, connectSocket } from '../../services/socket';
 import FeedbackForm from '../../components/client/FeedbackForm';
 import { toast } from 'react-hot-toast';
 import backgroundImg from '../../assets/background.png';
@@ -349,7 +349,10 @@ const MenuPage = () => {
       return undefined;
     }
 
-    const socket = connectSocket();
+    let socket = getSocket();
+    if (!socket) {
+      socket = connectSocket(null);
+    }
     socket.emit('joinTable', tableId);
 
     if (restaurantId) {
